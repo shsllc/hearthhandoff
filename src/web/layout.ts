@@ -45,10 +45,10 @@ if(j.latest>since){since=j.latest;const live=document.getElementById('live');if(
 export function page(opts: { title: string; viewer?: Viewer | null; since?: number; flash?: string | null; body: unknown }) {
   return html`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${opts.title} · CareRelay</title><style>${raw(CSS)}</style></head>
+<title>${opts.title} · HearthHandoff</title><style>${raw(CSS)}</style></head>
 <body data-since="${opts.since ?? 0}">
 ${config.demoMode ? html`<div class="banner" role="note">Demo build: sign-in is a person picker, and any scenario or replayed data is labeled where it appears.</div>` : ''}
-<header class="top"><div class="in"><a class="brand" href="/">CareRelay</a>
+<header class="top"><div class="in"><a class="brand" href="/">HearthHandoff</a>
 ${opts.viewer ? html`<span class="who">${opts.viewer.name} · ${opts.viewer.role === 'owner' ? 'Household owner' : 'Trusted person'}</span>
 <form method="post" action="/signout" style="margin:0"><button class="secondary" type="submit">Sign out</button></form>` : ''}
 </div></header>

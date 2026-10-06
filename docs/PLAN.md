@@ -1,4 +1,4 @@
-# CareRelay plan
+# HearthHandoff plan
 
 ## Product in one line
 The person who lives independently (the Ring account holder) schedules visits and deliveries, picks which trusted people can see each one, and gets a clear handoff record. The record has three parts: what was planned, what Ring saw at the door (clearly labeled as such), and what the caregiver explicitly confirmed. When a visit goes unconfirmed, a designated contact gets a calm, actionable follow-up.
@@ -76,13 +76,13 @@ Everything is defined in [`infra/template.yaml`](../infra/template.yaml) (CloudF
 
 1. **Devpost:** register at https://amazonappdev2026.devpost.com if you haven't already, and decide whether you're entering as an individual or under QuirkWorks LLC.
 2. **Amazon Developer account and identity verification:** https://developer.amazon.com/ring/console. You'll need a government photo ID, and **the full legal name on the console Company Profile must match the ID exactly.** If your existing profile is under QuirkWorks LLC, check this before you verify. You get three attempts.
-3. **Playground token (Wed 10/7):** go to https://developer.amazon.com/ring/console/playground and choose *Generate token*. Put the token in `CareRelay/.env` as `RING_ACCESS_TOKEN=`, then tell me "token saved." It expires in 30 minutes, so do this when I'm ready to probe.
+3. **Playground token (Wed 10/7):** go to https://developer.amazon.com/ring/console/playground and choose *Generate token*. Put the token in `HearthHandoff/.env` as `RING_ACCESS_TOKEN=`, then tell me "token saved." It expires in 30 minutes, so do this when I'm ready to probe.
 4. **Ring hardware (decides Tier 2):** do you have a Ring doorbell or camera on your account with an active Ring Protection plan or trial?
 5. **AWS (needed by Wed 10/7 for the first deploy):**
    - Request the $150 hackathon credits using the form on the resources page.
-   - Choose the AWS account. Create a CLI profile named `carerelay` that can deploy CloudFormation, Lambda, DynamoDB, Scheduler, Secrets Manager, IAM roles, S3 (artifact bucket), and SES. Run `aws configure sso --profile carerelay` (or `aws login`) **yourself**. None of your current profiles has live credentials.
+   - Choose the AWS account. Create a CLI profile named `hearthhandoff` that can deploy CloudFormation, Lambda, DynamoDB, Scheduler, Secrets Manager, IAM roles, S3 (artifact bucket), and SES. Run `aws configure sso --profile hearthhandoff` (or `aws login`) **yourself**. None of your current profiles has live credentials.
    - SES in us-west-2: verify a sender address and the demo recipients. Sandbox mode only delivers to verified addresses, which is fine for the demo.
    - After the first deploy: open the stack's secret in the Secrets Manager console and fill in `ACCESS_CODE`, and later the three Ring credentials.
-6. **If Tier 2 (Fri 10/9):** in the Ring console, go to *Private Apps* → *Create New App* (name: CareRelay). The Client ID, Client Secret, and HMAC Signing Key are shown **once**. Put them straight into the Secrets Manager entry, never into chat or git. I'll give you the four URLs for the **Staging** tab.
+6. **If Tier 2 (Fri 10/9):** in the Ring console, go to *Private Apps* → *Create New App* (name: HearthHandoff). The Client ID, Client Secret, and HMAC Signing Key are shown **once**. Put them straight into the Secrets Manager entry, never into chat or git. I'll give you the four URLs for the **Staging** tab.
 7. **GitHub (by 10/16):** confirm the repo name and public visibility. I'll create it with `gh` only after you say so.
 8. **Video (10/17–21):** you narrate or approve the script. It must be publicly visible on YouTube.

@@ -1,5 +1,5 @@
 {
-  "name": "carerelay",
+  "name": "hearthhandoff",
   "version": "0.1.0",
   "description": "Consent-based caregiver handoff: scheduled visits, Ring door events, explicit confirmation, and follow-up when a visit goes unconfirmed.",
   "scripts": {

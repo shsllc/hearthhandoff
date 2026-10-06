@@ -24,8 +24,8 @@ export const config = {
   workerIntervalSeconds: Number(env('WORKER_INTERVAL_SECONDS', '30')),
   // 'sqlite' for local runs; 'dynamodb' on AWS (set by the CloudFormation template).
   store: (env('STORE', 'sqlite') === 'dynamodb' ? 'dynamodb' : 'sqlite') as 'sqlite' | 'dynamodb',
-  dbPath: env('DB_PATH', 'data/carerelay.db'),
-  tableName: env('TABLE_NAME', 'carerelay'),
+  dbPath: env('DB_PATH', 'data/hearthhandoff.db'),
+  tableName: env('TABLE_NAME', 'hearthhandoff'),
   // Shared access code required to sign in on a deployed instance. Empty means open picker (local demo only).
   accessCode: env('ACCESS_CODE'),
   ses: {

@@ -2,7 +2,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { config } from './config.ts';
 
-const key = createHash('sha256').update('carerelay:tokens:' + config.appSecret).digest();
+const key = createHash('sha256').update('hearthhandoff:tokens:' + config.appSecret).digest();
 
 export function seal(plain: string): string {
   const iv = randomBytes(12);

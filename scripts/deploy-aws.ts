@@ -1,11 +1,11 @@
-// Deploys CareRelay to AWS with only the AWS CLI (no SAM CLI needed; CloudFormation runs the SAM transform).
-//   AWS_PROFILE=carerelay npm run deploy:aws                   # first deploy (two passes to learn the Function URL)
-//   AWS_PROFILE=carerelay SES_FROM=you@example.com npm run deploy:aws
+// Deploys HearthHandoff to AWS with only the AWS CLI (no SAM CLI needed; CloudFormation runs the SAM transform).
+//   AWS_PROFILE=<profile> npm run deploy:aws                   # first deploy (two passes to learn the Function URL)
+//   AWS_PROFILE=<profile> SES_FROM=you@example.com npm run deploy:aws
 // Never prints secret values.
 import { execFileSync } from 'node:child_process';
 
 const region = process.env.AWS_REGION || 'us-west-2';
-const stack = process.env.STACK_NAME || 'carerelay';
+const stack = process.env.STACK_NAME || 'hearthhandoff';
 const sesFrom = process.env.SES_FROM || '';
 const demoMode = process.env.DEMO_MODE || 'true';
 const customDomain = process.env.CUSTOM_DOMAIN || '';

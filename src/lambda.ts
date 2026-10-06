@@ -25,7 +25,7 @@ const repo = new Repo(await createStore(), config.retentionDays);
 const http = handle(buildApp(repo));
 
 export const handler = async (event: any, context: any) => {
-  if (event?.source === 'carerelay.tick' || event?.['detail-type'] === 'Scheduled Event') {
+  if (event?.source === 'hearthhandoff.tick' || event?.['detail-type'] === 'Scheduled Event') {
     const summary = await tick(repo);
     console.log(JSON.stringify({ tick: summary }));
     return summary;

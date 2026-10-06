@@ -1,10 +1,10 @@
-// After editing the carerelay/runtime secret, start fresh Lambda environments so they re-read it.
+// After editing the hearthhandoff/runtime secret, start fresh Lambda environments so they re-read it.
 // Changing only the function description does this without touching environment variables.
 //   AWS_PROFILE=... npm run aws:recycle
 import { execFileSync } from 'node:child_process';
 
 const region = process.env.AWS_REGION || 'us-west-2';
-const stack = process.env.STACK_NAME || 'carerelay';
+const stack = process.env.STACK_NAME || 'hearthhandoff';
 const aws = (args: string[]) => execFileSync('aws', [...args, '--region', region], { encoding: 'utf8' }).trim();
 
 const fn = aws(['cloudformation', 'describe-stacks', '--stack-name', stack, '--query', "Stacks[0].Outputs[?OutputKey=='FunctionName'].OutputValue", '--output', 'text']);

@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  CareRelay - consent-based caregiver handoff on Ring events.
+  HearthHandoff - consent-based caregiver handoff on Ring events.
   Lambda (Function URL) + DynamoDB (TTL) + EventBridge Scheduler + Secrets Manager + SES.
 
 Parameters:
@@ -20,7 +20,7 @@ Parameters:
   CustomDomain:
     Type: String
     Default: ''
-    Description: e.g. carerelay.quirkworksllc.com (DNS hosted elsewhere; point a CNAME at the RegionalDomainTarget output).
+    Description: e.g. hearthhandoff.quirkworksllc.com (DNS hosted elsewhere; point a CNAME at the RegionalDomainTarget output).
   CertificateArn:
     Type: String
     Default: ''
@@ -56,8 +56,8 @@ Resources:
   AppSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: carerelay/runtime
-      Description: CareRelay runtime secrets (Ring credentials, APP_SECRET, ACCESS_CODE)
+      Name: hearthhandoff/runtime
+      Description: HearthHandoff runtime secrets (Ring credentials, APP_SECRET, ACCESS_CODE)
       GenerateSecretString:
         SecretStringTemplate: '{"RING_CLIENT_ID":"","RING_CLIENT_SECRET":"","RING_HMAC_SIGNING_KEY":"","RING_ACCESS_TOKEN":"","ACCESS_CODE":""}'
         GenerateStringKey: APP_SECRET
@@ -108,7 +108,7 @@ Resources:
           Type: ScheduleV2
           Properties:
             ScheduleExpression: rate(1 minute)
-            Input: '{"source":"carerelay.tick"}'
+            Input: '{"source":"hearthhandoff.tick"}'
             RetryPolicy: { MaximumRetryAttempts: 0 }
 
   # API Gateway HTTP API: the stable public entry point on the custom domain. Ring endpoints and the UI

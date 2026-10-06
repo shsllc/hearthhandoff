@@ -21,7 +21,7 @@ export function verifyWebhookSignature(
   return timingSafeEqual(expected, Buffer.from(received, 'hex'));
 }
 
-/** The door-relevant subset of Ring activity CareRelay stores. Anything else is acknowledged and dropped. */
+/** The door-relevant subset of Ring activity HearthHandoff stores. Anything else is acknowledged and dropped. */
 export type DoorEventType = 'button_press' | 'motion';
 
 export interface NormalizedDoorEvent {

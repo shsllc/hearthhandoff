@@ -12,9 +12,9 @@ startLocalWorker(repo, config.workerIntervalSeconds);
 
 serve({ fetch: app.fetch, port: config.port }, () => {
   const base = config.publicBaseUrl;
-  console.log(`CareRelay on http://localhost:${config.port}  (store: ${repo.store.kind}, ring: ${ringMode()}, demo: ${config.demoMode})`);
+  console.log(`HearthHandoff on http://localhost:${config.port}  (store: ${repo.store.kind}, ring: ${ringMode()}, demo: ${config.demoMode})`);
   console.log('Ring portal URLs (must be public HTTPS):');
-  for (const [k, p] of [['Account Link URL', '/ring/link'], ['Token Exchange URL', '/ring/token-exchange'], ['Webhook URL', '/ring/webhook'], ['App Homepage / Default Redirect URL', '/ring/home']]) {
+  for (const [k, p] of [['Account Link URL', '/ring/link'], ['Token Exchange URL', '/ring/token-exchange'], ['Webhook URL', '/ring/webhook'], ['App Homepage / Default Redirect URL', '/']]) {
     console.log(`  ${k.padEnd(36)} ${base}${p}`);
   }
 });

@@ -10,7 +10,7 @@ import { syncRingDevices } from '../worker.ts';
 import { page, type Viewer } from '../web/layout.ts';
 
 /** Key used to sign local replays when no Ring app is registered yet. Never accepted on /ring/webhook. */
-export const LOCAL_REPLAY_KEY = 'carerelay-local-replay-only';
+export const LOCAL_REPLAY_KEY = 'hearthhandoff-local-replay-only';
 
 export interface WebhookOutcome { status: number; body: Record<string, unknown> }
 
@@ -97,7 +97,7 @@ export const signReplay = (body: string) => signWebhookBody(replayKey(), body);
 
 const maskEmail = (email: string) => {
   const [user, domain] = email.split('@');
-  if (!domain) return 'u***r@carerelay.app';
+  if (!domain) return 'u***r@example.invalid';
   return `${user.slice(0, 1)}***${user.length > 1 ? user.slice(-1) : ''}@${domain}`;
 };
 
@@ -146,7 +146,7 @@ export function ringRoutes(repo: Repo, getViewer: (c: any) => Promise<Viewer | n
     const viewer = await getViewer(c);
     if (!fresh.ok || !nonce) {
       return c.html(page({ title: 'Link expired', viewer, body: html`<h1>This Ring link can't be used</h1>
-        <p>${fresh.ok ? 'The link is missing its security code.' : fresh.reason}. Start again from the Ring app: open the Ring App Store, go to CareRelay, and choose Connect.</p>` }), 400);
+        <p>${fresh.ok ? 'The link is missing its security code.' : fresh.reason}. Start again from the Ring app: open the Ring App Store, go to HearthHandoff, and choose Connect.</p>` }), 400);
     }
     if (!viewer) return c.redirect(`/signin?next=${encodeURIComponent(`/ring/link?nonce=${nonce}&time=${time}`)}&owner_only=1`);
     if (viewer.role !== 'owner') {
@@ -156,7 +156,7 @@ export function ringRoutes(repo: Repo, getViewer: (c: any) => Promise<Viewer | n
     const hh = await repo.getHousehold(viewer.householdId);
     return c.html(page({ title: 'Connect Ring', viewer, body: html`
       <h1>Connect your Ring account to ${hh?.name}</h1>
-      <p>CareRelay will receive doorbell presses, motion events, and online/offline status from the Ring devices you chose in the Ring app. It does not download video or images, and it cannot unlock or control anything.</p>
+      <p>HearthHandoff will receive doorbell presses, motion events, and online/offline status from the Ring devices you chose in the Ring app. It does not download video or images, and it cannot unlock or control anything.</p>
       <p>Each trusted person only sees door activity that falls inside visits they are part of. Activity that isn't attached to a visit is visible only to you and is deleted after ${config.retentionDays} days.</p>
       <form method="post" action="/ring/link">
         <input type="hidden" name="nonce" value="${nonce}"><input type="hidden" name="time" value="${time}">

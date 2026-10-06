@@ -28,7 +28,7 @@ export async function notifyFollowup(repo: Repo, hid: string, visitId: string, f
     '',
     `See the visit and respond: ${link}`,
     '',
-    'CareRelay sends this because you are the follow-up contact for this visit. It is not an emergency alert.',
+    'HearthHandoff sends this because you are the follow-up contact for this visit. It is not an emergency alert.',
   ].join('\n');
 
   ses ??= new SESv2Client({ region: config.ses.region });

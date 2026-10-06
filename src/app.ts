@@ -44,7 +44,7 @@ export function buildApp(repo: Repo) {
 
   const ringPromise = () => html`
       <section class="card">
-        <h2 style="margin-top:0">What CareRelay does with your Ring devices</h2>
+        <h2 style="margin-top:0">What HearthHandoff does with your Ring devices</h2>
         <ul>
           <li>Receives doorbell presses, motion events, and online/offline status from the devices you chose in the Ring app.</li>
           <li>Shows that activity only on visits you schedule, and only to the people you share each visit with.</li>
@@ -61,7 +61,7 @@ export function buildApp(repo: Repo) {
     const who = await getViewer(c);
     if (who) return c.redirect(who.role === 'owner' ? '/owner' : '/me');
     return c.html(page({ title: 'Home', flash: flash(c), body: html`
-      <h1>CareRelay</h1>
+      <h1>HearthHandoff</h1>
       <p>A shared, consent-based record of planned visits and deliveries for someone living independently.
         The person whose home it is decides who sees each visit. The visiting caregiver confirms what happened.
         If a visit isn't confirmed in time, a chosen contact gets a calm follow-up.</p>
@@ -85,8 +85,8 @@ export function buildApp(repo: Repo) {
       <section class="card">
         <h2 style="margin-top:0">Connection</h2>
         ${linked ? html`<p><span class="pill ok">Connected</span> since ${acct!.claimedAt ? d(acct!.claimedAt) : 'recently'}.</p>`
-          : html`<p><span class="pill warn">Not connected</span> Connect from the Ring app: Ring App Store → CareRelay → Connect.</p>`}
-        <p class="small">To change which devices CareRelay can use, or to remove its access, use Ring's own page:
+          : html`<p><span class="pill warn">Not connected</span> Connect from the Ring app: Ring App Store → HearthHandoff → Connect.</p>`}
+        <p class="small">To change which devices HearthHandoff can use, or to remove its access, use Ring's own page:
           <a href="https://account.ring.com/account/integrations" rel="noopener">Ring → Account → Integrations</a>.</p>
       </section>
       <section class="card">
@@ -211,7 +211,7 @@ export function buildApp(repo: Repo) {
       <section class="card">
         ${mode === 'app' && acct?.status === 'completed' ? html`<p><span class="pill ok">Connected</span> Linked Ring account via one-way account linking.
             Real-time events arrive by signed webhook, and the Event History API is polled as a backstop.</p>`
-          : mode === 'app' ? html`<p><span class="pill warn">Not linked yet</span> The CareRelay Ring app is registered. Connect it from the Ring app: Ring App Store → CareRelay → Connect.</p>`
+          : mode === 'app' ? html`<p><span class="pill warn">Not linked yet</span> The HearthHandoff Ring app is registered. Connect it from the Ring app: Ring App Store → HearthHandoff → Connect.</p>`
           : mode === 'playground' ? html`<p><span class="pill info">Developer Playground</span> Using a short-lived Ring Developer Playground token (read-only, 30 minutes). Device and Event History calls go to the real Ring API, but the Playground device does not produce doorbell or motion webhooks.</p>`
           : html`<p><span class="pill plain">Not connected</span> Add a Ring Playground token or register a Ring app (see SETUP.md).</p>`}
         ${devices.length ? html`<table><thead><tr><th scope="col">Device</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col">History poll</th></tr></thead><tbody>
@@ -297,7 +297,7 @@ export function buildApp(repo: Repo) {
     const d = dateTimeFormatter(hh.timezone);
     const log = await repo.auditLog(who.householdId);
     return c.html(page({ title: 'Activity log', viewer: who, body: html`
-      <h1>Activity log</h1><p class="muted">The last 30 days of everything CareRelay did for this household, including duplicate and late Ring deliveries.</p>
+      <h1>Activity log</h1><p class="muted">The last 30 days of everything HearthHandoff did for this household, including duplicate and late Ring deliveries.</p>
       <table><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead><tbody>
       ${log.map((a) => html`<tr><td class="small">${d(a.at)}</td><td class="small">${a.actor}</td><td><strong>${a.action}</strong><div class="small">${a.detail}</div></td></tr>`)}
       </tbody></table>` }));
@@ -447,7 +447,7 @@ export function buildApp(repo: Repo) {
       { at: v.windowEnd, node: html`<li><strong>Visit window ends</strong> · ${t(v.windowEnd)}</li>` },
       ...events.map(({ event, match }) => ({ at: event.occurredAt, node: eventItem(event, match, deviceName(event.deviceId), t) })),
       ...v.confirmations.map((cf) => ({ at: cf.at, node: html`<li class="person"><strong>${cf.outcome === 'completed' ? `${nameOf(cf.personId)} confirmed the visit` : `${nameOf(cf.personId)} reported a problem`}</strong> · ${t(cf.at)}
-        ${cf.note ? html`<p>“${cf.note}”</p>` : ''}<p class="caveat">Confirmed by the person, in CareRelay.</p></li>` })),
+        ${cf.note ? html`<p>“${cf.note}”</p>` : ''}<p class="caveat">Confirmed by the person, in HearthHandoff.</p></li>` })),
       ...v.followups.map((f) => ({ at: f.createdAt, node: html`<li class="alert"><strong>Follow-up opened for ${nameOf(f.contactPersonId)}</strong> · ${t(f.createdAt)}</li>` })),
     ];
     if (events.length === 0) entries.push({ at: v.windowEnd + 1, node: html`<li class="ring"><strong>No door activity recorded near this visit</strong><p class="caveat">This is not evidence of a problem. People may use another door, motion zones may not cover them, or events may arrive late.</p></li>` });

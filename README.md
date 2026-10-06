@@ -1,11 +1,11 @@
-# CareRelay
+# HearthHandoff
 
 **A consent-based caregiver handoff for someone living independently.**
 The person who owns the Ring account schedules visits and deliveries and chooses which trusted people can see each one. Ring door events appear on a clearly labeled timeline. The visiting caregiver explicitly confirms the visit or reports a problem. If nobody confirms by a set time, a designated contact gets a calm, actionable follow-up.
 
 Built for **Build, Ship, Shape: Amazon Developer Hackathon 2026**, Ring track, using AWS Lambda, DynamoDB, EventBridge Scheduler, Secrets Manager, and SES.
 
-## What CareRelay will and won't claim
+## What HearthHandoff will and won't claim
 - Door activity is shown as *"Ring recorded activity at the door. This does not show who it was or whether care happened."*
 - Only a person's explicit confirmation resolves a visit.
 - No door activity is never treated as an emergency, and nothing is dispatched automatically.
@@ -34,8 +34,8 @@ Evidence, gaps, and assumptions are in [docs/FEASIBILITY.md](docs/FEASIBILITY.md
 
 ## Deploy to AWS
 ```bash
-AWS_PROFILE=carerelay npm run deploy:aws             # add SES_FROM=you@example.com to enable email
-STORE=dynamodb TABLE_NAME=<from output> AWS_PROFILE=carerelay npm run seed
+AWS_PROFILE=<your profile> npm run deploy:aws        # see docs/SETUP.md for SES_FROM / CUSTOM_DOMAIN
+STORE=dynamodb TABLE_NAME=<from output> AWS_PROFILE=<your profile> npm run seed
 ```
 The script prints the four URLs to register in the Ring Developer Console. Then add the Ring credentials and an `ACCESS_CODE` to the stack's Secrets Manager entry. Architecture and rationale are in [docs/PLAN.md](docs/PLAN.md).
 
