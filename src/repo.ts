@@ -26,6 +26,8 @@ export interface Person extends Item { id: string; householdId: string; name: st
 export interface Device extends Item {
   id: string; householdId: string; name: string; kind: string | null; online: boolean | null; offlineSince: number | null;
   origin: 'ring_app' | 'ring_playground' | 'demo'; updatedAt: number; lastPolledAt?: number | null; lastPollError?: string | null;
+  /** True once the owner renamed it; Ring syncs then keep the owner's name. */
+  nameSetByOwner?: boolean;
 }
 export interface Match { eventSk: string; eventId: string; ruleVersion: string; reason: string; matchedAt: number }
 export interface Confirmation { id: string; personId: string; outcome: 'completed' | 'problem'; note: string | null; at: number }

@@ -42,6 +42,61 @@ export function buildApp(repo: Repo) {
     c.header('X-Frame-Options', 'DENY');
   });
 
+  // App Homepage URL (Ring: "custom app configuration page for post-linking setup").
+  // Public explainer when signed out; setup for the owner; caregivers go to their visits.
+  app.get('/ring/config', async (c) => {
+    const who = await getViewer(c);
+    if (who?.role === 'caregiver') return c.redirect('/me');
+    const promise = html`
+      <section class="card">
+        <h2 style="margin-top:0">What CareRelay does with your Ring devices</h2>
+        <ul>
+          <li>Receives doorbell presses, motion events, and online/offline status from the devices you chose in the Ring app.</li>
+          <li>Shows that activity only on visits you schedule, and only to the people you share each visit with.</li>
+          <li>Treats Ring activity as "something happened at the door", never as who it was or proof that care happened.</li>
+          <li>Deletes activity that isn't attached to a visit after ${config.retentionDays} days.</li>
+        </ul>
+        <h3>What it never does</h3>
+        <ul><li>Download video or images, watch a live stream, identify people, unlock anything, or call emergency services.</li></ul>
+      </section>`;
+    if (!who) {
+      return c.html(page({ title: 'Ring setup', flash: flash(c), body: html`
+        <h1>CareRelay</h1>
+        <p>A shared, consent-based record of planned visits and deliveries for someone living independently. QuirkWorks builds and runs it.</p>
+        ${promise}
+        <div class="actions"><a class="btn" href="/signin?next=${encodeURIComponent('/ring/config')}">Sign in to finish setup</a></div>` }));
+    }
+    const hh = (await repo.getHousehold(who.householdId))!;
+    const d = dateTimeFormatter(hh.timezone);
+    const acct = hh.ringAccountId ? await repo.getRing(hh.ringAccountId) : undefined;
+    const devices = (await repo.devices(who.householdId)).filter((x) => x.origin !== 'demo');
+    const linked = acct && (acct.status === 'completed' || acct.status === 'awaiting');
+    return c.html(page({ title: 'Ring setup', viewer: who, flash: flash(c), body: html`
+      <h1>Ring setup</h1>
+      <section class="card">
+        <h2 style="margin-top:0">Connection</h2>
+        ${linked ? html`<p><span class="pill ok">Connected</span> since ${acct!.claimedAt ? d(acct!.claimedAt) : 'recently'}.</p>`
+          : html`<p><span class="pill warn">Not connected</span> Connect from the Ring app: Ring App Store → CareRelay → Connect.</p>`}
+        <p class="small">To change which devices CareRelay can use, or to remove its access, use Ring's own page:
+          <a href="https://account.ring.com/account/integrations" rel="noopener">Ring → Account → Integrations</a>.</p>
+      </section>
+      <section class="card">
+        <h2 style="margin-top:0">Name your doors</h2>
+        <p class="small muted">Visitors see these names on visit timelines, so pick names that make sense to them.</p>
+        ${devices.length === 0 ? html`<p class="muted">No Ring devices yet.</p>` : devices.map((x) => html`
+          <form method="post" action="/owner/devices/rename" class="row" style="align-items:end">
+            <input type="hidden" name="device_id" value="${x.id}">
+            <div><label for="dn-${x.id}">Name for ${x.kind ?? 'device'} (${x.online === true ? 'online' : x.online === false ? 'offline' : 'status unknown'})</label>
+              <input id="dn-${x.id}" name="name" value="${x.name}" required maxlength="40"></div>
+            <div style="flex:0 0 auto"><button class="secondary" type="submit">Save name</button></div>
+          </form>`)}
+        ${linked ? html`<form method="post" action="/owner/ring/sync"><div class="actions"><button class="secondary" type="submit">Refresh devices from Ring</button></div></form>` : ''}
+      </section>
+      ${promise}
+      <h2>Next steps</h2>
+      <div class="actions"><a class="btn" href="/owner/visits/new">Schedule the first visit</a><a class="btn secondary" href="/owner">Go to your household</a></div>` }));
+  });
+
   app.route('/ring', ringRoutes(repo, getViewer));
 
   app.get('/healthz', (c) => c.json({ ok: true, store: repo.store.kind, ring: ringMode() }));
@@ -185,6 +240,17 @@ export function buildApp(repo: Repo) {
   authed.post('/owner/ring/sync', ownerOnly, async (c) => {
     const r = await syncRingDevices(repo, c.get('viewer').householdId);
     return c.redirect('/owner?flash=' + encodeURIComponent(r.message));
+  });
+
+  authed.post('/owner/devices/rename', ownerOnly, async (c) => {
+    const who = c.get('viewer');
+    const form = await c.req.parseBody();
+    const dev = await repo.getDevice(who.householdId, String(form.device_id ?? ''));
+    const name = String(form.name ?? '').trim().slice(0, 40);
+    if (!dev || !name) return c.redirect('/ring/config?flash=' + encodeURIComponent('Enter a name for the device.'));
+    await repo.putDevice({ ...dev, name, nameSetByOwner: true });
+    await repo.audit(who.householdId, who.id, 'device.renamed', `${dev.name} → ${name}`);
+    return c.redirect('/ring/config?flash=' + encodeURIComponent(`Saved “${name}”.`));
   });
 
   authed.post('/owner/demo/replay', ownerOnly, async (c) => {

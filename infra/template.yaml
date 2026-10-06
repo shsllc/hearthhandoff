@@ -17,6 +17,14 @@ Parameters:
     Type: String
     AllowedValues: ['true', 'false']
     Default: 'true'
+  CustomDomain:
+    Type: String
+    Default: ''
+    Description: e.g. carerelay.quirkworksllc.com (DNS hosted elsewhere; point a CNAME at the RegionalDomainTarget output).
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: ISSUED ACM certificate in this region for CustomDomain.
   RetentionDays:
     Type: Number
     Default: 7
@@ -25,6 +33,7 @@ Parameters:
 
 Conditions:
   HasSes: !Not [!Equals [!Ref SesFromAddress, '']]
+  HasDomain: !Not [!Equals [!Ref CustomDomain, '']]
 
 Resources:
   Table:
@@ -91,12 +100,42 @@ Resources:
       FunctionUrlConfig:
         AuthType: NONE
       Events:
+        Http:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
         Tick:
           Type: ScheduleV2
           Properties:
             ScheduleExpression: rate(1 minute)
             Input: '{"source":"carerelay.tick"}'
             RetryPolicy: { MaximumRetryAttempts: 0 }
+
+  # API Gateway HTTP API: the stable public entry point on the custom domain. Ring endpoints and the UI
+  # sit behind it; payloads reach Lambda unmodified (the HMAC is verified on the exact body bytes).
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      DisableExecuteApiEndpoint: false
+
+  ApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: HasDomain
+    Properties:
+      DomainName: !Ref CustomDomain
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+          SecurityPolicy: TLS_1_2
+
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: HasDomain
+    DependsOn: HttpApiApiGatewayDefaultStage
+    Properties:
+      ApiId: !Ref HttpApi
+      DomainName: !Ref ApiDomain
+      Stage: $default
 
   AppLogs:
     Type: AWS::Logs::LogGroup
@@ -105,6 +144,12 @@ Resources:
       RetentionInDays: 14
 
 Outputs:
+  RegionalDomainTarget:
+    Condition: HasDomain
+    Description: Point the custom domain's CNAME here (DNS only, not proxied).
+    Value: !GetAtt ApiDomain.RegionalDomainName
+  ApiEndpoint:
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
   FunctionUrl:
     Value: !GetAtt AppFunctionUrl.FunctionUrl
   TableName:

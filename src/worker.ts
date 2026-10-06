@@ -22,7 +22,7 @@ export async function syncRingDevices(repo: Repo, hid: string): Promise<{ ok: bo
       } catch { /* status is best-effort context */ }
       const prev = await repo.getDevice(hid, d.id);
       await repo.putDevice({
-        id: d.id, householdId: hid, name: d.name, kind: d.kind, online: online ?? prev?.online ?? null,
+        id: d.id, householdId: hid, name: prev?.nameSetByOwner ? prev.name : d.name, nameSetByOwner: prev?.nameSetByOwner ?? false, kind: d.kind, online: online ?? prev?.online ?? null,
         offlineSince: online === false ? (prev?.offlineSince ?? Date.now()) : online === true ? null : (prev?.offlineSince ?? null),
         origin: access.mode === 'app' ? 'ring_app' : 'ring_playground', updatedAt: Date.now(),
         lastPolledAt: prev?.lastPolledAt ?? null, lastPollError: prev?.lastPollError ?? null,

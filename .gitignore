@@ -7,3 +7,8 @@ data/
 *.db-*
 .DS_Store
 dist/
+
+# Never commit downloaded credentials
+*credentials*.csv
+*.pem
+*.p8

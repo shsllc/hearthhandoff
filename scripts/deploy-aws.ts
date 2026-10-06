@@ -8,6 +8,9 @@ const region = process.env.AWS_REGION || 'us-west-2';
 const stack = process.env.STACK_NAME || 'carerelay';
 const sesFrom = process.env.SES_FROM || '';
 const demoMode = process.env.DEMO_MODE || 'true';
+const customDomain = process.env.CUSTOM_DOMAIN || '';
+const certificateArn = process.env.CERTIFICATE_ARN || '';
+if (customDomain && !certificateArn) throw new Error('CUSTOM_DOMAIN needs CERTIFICATE_ARN (an ISSUED ACM certificate in this region).');
 
 const aws = (args: string[], quiet = false) =>
   execFileSync('aws', [...args, '--region', region], { encoding: 'utf8', stdio: quiet ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'pipe', 'inherit'] }).trim();
@@ -41,10 +44,11 @@ const deploy = (publicBaseUrl: string) => {
   console.log(`Deploying stack ${stack} (PublicBaseUrl=${publicBaseUrl || '(pending)'})…`);
   aws(['cloudformation', 'deploy', '--template-file', 'dist/packaged.yaml', '--stack-name', stack,
     '--capabilities', 'CAPABILITY_IAM', 'CAPABILITY_AUTO_EXPAND', '--no-fail-on-empty-changeset',
-    '--parameter-overrides', `PublicBaseUrl=${publicBaseUrl}`, `SesFromAddress=${sesFrom}`, `DemoMode=${demoMode}`]);
+    '--parameter-overrides', `PublicBaseUrl=${publicBaseUrl}`, `SesFromAddress=${sesFrom}`, `DemoMode=${demoMode}`,
+    `CustomDomain=${customDomain}`, `CertificateArn=${certificateArn}`]);
 };
 
-let url = (outputs().FunctionUrl ?? '').replace(/\/$/, '');
+let url = customDomain ? `https://${customDomain}` : (outputs().FunctionUrl ?? '').replace(/\/$/, '');
 deploy(url);
 if (!url) {
   url = (outputs().FunctionUrl ?? '').replace(/\/$/, '');
@@ -58,11 +62,14 @@ Deployed.
   Table:          ${o.TableName}
   Secret:         ${o.SecretArn}   (add Ring credentials in the Secrets Manager console)
 
+${customDomain ? `DNS (Cloudflare, DNS only): CNAME ${customDomain} → ${o.RegionalDomainTarget}
+` : ''}
 Register these on the Ring app's Account linking page (Staging tab):
   Account Link URL       ${url}/ring/link
   Token Exchange URL     ${url}/ring/token-exchange
   Webhook URL            ${url}/ring/webhook
-  Default Redirect URL   ${url}/ring/home
+  App Homepage URL       ${url}/ring/config
+  Default Redirect URL   ${url}/ring/config
 
 Seed the demo household into DynamoDB:
   STORE=dynamodb TABLE_NAME=${o.TableName} AWS_REGION=${region} npm run seed`);

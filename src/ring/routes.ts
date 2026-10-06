@@ -193,11 +193,11 @@ export function ringRoutes(repo: Repo, getViewer: (c: any) => Promise<Viewer | n
     await repo.setHouseholdRingAccount(viewer.householdId, accountId);
     await repo.audit(viewer.householdId, viewer.id, 'ring.linked', 'Ring account connected (one-way account linking)');
     const sync = await syncRingDevices(repo, viewer.householdId);
-    return c.redirect(`/owner?flash=${encodeURIComponent('Ring connected. ' + sync.message)}`);
+    return c.redirect(`/ring/config?flash=${encodeURIComponent('Ring connected. ' + sync.message)}`);
   });
 
   // App Homepage URL.
-  r.get('/home', (c) => c.redirect('/'));
+  r.get('/home', (c) => c.redirect('/ring/config'));
 
   return r;
 }
