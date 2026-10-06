@@ -18,7 +18,9 @@ Open http://localhost:3000. To call the real Ring API without a device, put a De
 
 ```bash
 aws sso login --sso-session aws-admin
-AWS_PROFILE=AdministratorAccess-246830848999 SES_FROM=carerelay@quirkworksllc.com \n  CUSTOM_DOMAIN=carerelay.quirkworksllc.com \n  CERTIFICATE_ARN=arn:aws:acm:us-west-2:246830848999:certificate/12ea86cc-1a4d-47a1-ae3c-426a69cc81cd npm run deploy:aws
+AWS_PROFILE=AdministratorAccess-246830848999 SES_FROM=carerelay@quirkworksllc.com \
+  CUSTOM_DOMAIN=carerelay.quirkworksllc.com \
+  CERTIFICATE_ARN=arn:aws:acm:us-west-2:246830848999:certificate/12ea86cc-1a4d-47a1-ae3c-426a69cc81cd npm run deploy:aws
 AWS_PROFILE=AdministratorAccess-246830848999 npm run aws:recycle     # after editing the secret
 ```
 
