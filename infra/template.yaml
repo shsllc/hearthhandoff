@@ -1,0 +1,114 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CareRelay - consent-based caregiver handoff on Ring events.
+  Lambda (Function URL) + DynamoDB (TTL) + EventBridge Scheduler + Secrets Manager + SES.
+
+Parameters:
+  PublicBaseUrl:
+    Type: String
+    Default: ''
+    Description: HTTPS base URL used in emails and cookies. The deploy script fills this with the Function URL on its second pass.
+  SesFromAddress:
+    Type: String
+    Default: ''
+    Description: Verified SES identity to send follow-up emails from. Empty disables email (in-app only).
+  DemoMode:
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'true'
+  RetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 30
+
+Conditions:
+  HasSes: !Not [!Equals [!Ref SesFromAddress, '']]
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      # Data minimization: unattached door events, receipts, audit and the unclaimed-token pool expire on their own.
+      TimeToLiveSpecification: { AttributeName: ttl, Enabled: true }
+      SSESpecification: { SSEEnabled: true }
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+
+  # Ring credentials are added by the owner in the Secrets Manager console after the Ring app is created.
+  # APP_SECRET (session signing + token encryption key) is generated here and never leaves AWS.
+  AppSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: CareRelay runtime secrets (Ring credentials, APP_SECRET, ACCESS_CODE)
+      GenerateSecretString:
+        SecretStringTemplate: '{"RING_CLIENT_ID":"","RING_CLIENT_SECRET":"","RING_HMAC_SIGNING_KEY":"","RING_ACCESS_TOKEN":"","ACCESS_CODE":""}'
+        GenerateStringKey: APP_SECRET
+        PasswordLength: 48
+        ExcludePunctuation: true
+
+  AppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../dist/
+      Handler: lambda.handler
+      Runtime: nodejs24.x
+      Architectures: [arm64]
+      MemorySize: 512
+      # Ring requires a webhook response within 5 s; keep the function well under that in normal operation.
+      Timeout: 20
+      Environment:
+        Variables:
+          STORE: dynamodb
+          TABLE_NAME: !Ref Table
+          SECRET_ID: !Ref AppSecret
+          PUBLIC_BASE_URL: !Ref PublicBaseUrl
+          DEMO_MODE: !Ref DemoMode
+          RETENTION_DAYS: !Ref RetentionDays
+          SES_FROM: !Ref SesFromAddress
+          NODE_OPTIONS: --enable-source-maps
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - AWSSecretsManagerGetSecretValuePolicy: { SecretArn: !Ref AppSecret }
+        - !If
+          - HasSes
+          - Statement:
+              - Effect: Allow
+                Action: ses:SendEmail
+                Resource: '*'
+                Condition:
+                  StringEquals: { 'ses:FromAddress': !Ref SesFromAddress }
+          - !Ref AWS::NoValue
+      # Public HTTPS endpoint Ring calls (webhook, token exchange) and people open (UI, account link).
+      FunctionUrlConfig:
+        AuthType: NONE
+      Events:
+        Tick:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 minute)
+            Input: '{"source":"carerelay.tick"}'
+            RetryPolicy: { MaximumRetryAttempts: 0 }
+
+  AppLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AppFunction}
+      RetentionInDays: 14
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt AppFunctionUrl.FunctionUrl
+  TableName:
+    Value: !Ref Table
+  SecretArn:
+    Value: !Ref AppSecret
+  FunctionName:
+    Value: !Ref AppFunction

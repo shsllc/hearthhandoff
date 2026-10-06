@@ -1,0 +1,34 @@
+{
+  "name": "carerelay",
+  "version": "0.1.0",
+  "description": "Consent-based caregiver handoff: scheduled visits, Ring door events, explicit confirmation, and follow-up when a visit goes unconfirmed.",
+  "scripts": {
+    "start": "node src/server.ts",
+    "dev": "node --watch src/server.ts",
+    "seed": "node scripts/seed.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "ring:probe": "node scripts/ring-probe.ts",
+    "build:lambda": "node scripts/build-lambda.ts",
+    "deploy:aws": "node scripts/deploy-aws.ts"
+  },
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1146.0",
+    "@aws-sdk/client-secrets-manager": "^3.1146.0",
+    "@aws-sdk/client-sesv2": "^3.1146.0",
+    "@aws-sdk/lib-dynamodb": "^3.1146.0",
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  }
+}
