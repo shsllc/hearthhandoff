@@ -36,7 +36,13 @@ export function buildApp(repo: Repo) {
   // Form posts from our own pages only. Ring's server-to-server calls are exempt (JSON or no Origin).
   app.use('*', async (c, next) => (c.req.path.startsWith('/ring/') || c.req.path.startsWith('/internal/') ? next() : csrf()(c, next)));
   app.use('*', async (c, next) => {
+    const started = Date.now();
     await next();
+    // Diagnostics for Ring-facing traffic: shape only, never bodies, query values, or tokens.
+    if (c.req.path.startsWith('/ring') || c.req.path === '/') {
+      console.log(JSON.stringify({ ring_http: { method: c.req.method, path: c.req.path, status: c.res.status, ms: Date.now() - started,
+        ctype: c.req.header('content-type') ?? null, queryKeys: Object.keys(c.req.query()), ua: c.req.header('user-agent')?.slice(0, 60) ?? null } }));
+    }
     c.header('X-Content-Type-Options', 'nosniff');
     c.header('Referrer-Policy', 'same-origin');
     c.header('X-Frame-Options', 'DENY');
@@ -58,6 +64,11 @@ export function buildApp(repo: Repo) {
   // App Homepage URL and Default Redirect URL (registered with Ring as the site root).
   // Signed out: public landing. Signed in: the person's home (owner household or caregiver visits).
   app.get('/', async (c) => {
+    // Ring's certification checklist expects the configuration URL to "return valid JSON".
+    const accept = c.req.header('accept') ?? '';
+    if (accept.includes('application/json') && !accept.includes('text/html')) {
+      return c.json({ app: 'HearthHandoff', developer: 'QuirkWorks', status: 'ok', setup: `${config.publicBaseUrl}/ring/config` });
+    }
     const who = await getViewer(c);
     if (who) return c.redirect(who.role === 'owner' ? '/owner' : '/me');
     return c.html(page({ title: 'Home', flash: flash(c), body: html`
