@@ -21,7 +21,7 @@ npm run seed                # fictional demo household: June (owner), Dana, Sam,
 npm start                   # http://localhost:3000
 ```
 
-Then follow the walkthrough in [docs/DEMO.md](docs/DEMO.md). Run `npm test` for the 21 unit and end-to-end tests. Those cover signature vectors from Ring's own reference code, deduplication, late events, visibility, CSRF, and deadlines.
+Then follow the walkthrough in [docs/DEMO.md](docs/DEMO.md). Run `npm test` for the 36 unit and end-to-end tests. They cover signature vectors from Ring's own reference code, the full one-way account-linking flow against a fake Ring server, deduplication, late events, visibility, CSRF, deadlines, and the store contract. `npm run test:aws` (with `DYNAMO_TEST_TABLE`) runs that contract against real DynamoDB, and `npm run smoke:aws` checks Scheduler → Lambda → DynamoDB → SES on the deployed stack.
 
 ## Ring integration
 | Path | What's real |
