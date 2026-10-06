@@ -107,6 +107,8 @@ Resources:
         Tick:
           Type: ScheduleV2
           Properties:
+            # Schedule names are unique per account and region, so scope them to the stack.
+            Name: !Sub ${AWS::StackName}-tick
             ScheduleExpression: rate(1 minute)
             Input: '{"source":"hearthhandoff.tick"}'
             RetryPolicy: { MaximumRetryAttempts: 0 }
