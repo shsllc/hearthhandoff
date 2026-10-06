@@ -9,14 +9,16 @@ Open http://localhost:3000. To call the real Ring API without a device, put a De
 ## AWS deployment (account 246830848999, us-west-2)
 | Resource | Value |
 |---|---|
-| App / Function URL | https://wldincr4byncbgjikszktgcra40twwka.lambda-url.us-west-2.on.aws |
+| App URL (API Gateway custom domain) | https://carerelay.quirkworksllc.com |
 | Secret | `carerelay/runtime` (Secrets Manager) |
 | Table | `carerelay-Table-18U0R7QPB2H76` (DynamoDB, TTL on `ttl`) |
+| DNS (Cloudflare, DNS only) | `CNAME carerelay → d-l0qm4tggvi.execute-api.us-west-2.amazonaws.com` |
+| Certificate | ACM `12ea86cc-…` (DNS-validated) |
 | Email sender | `carerelay@quirkworksllc.com` (SES, domain verified) |
 
 ```bash
 aws sso login --sso-session aws-admin
-AWS_PROFILE=AdministratorAccess-246830848999 SES_FROM=carerelay@quirkworksllc.com npm run deploy:aws
+AWS_PROFILE=AdministratorAccess-246830848999 SES_FROM=carerelay@quirkworksllc.com \n  CUSTOM_DOMAIN=carerelay.quirkworksllc.com \n  CERTIFICATE_ARN=arn:aws:acm:us-west-2:246830848999:certificate/12ea86cc-1a4d-47a1-ae3c-426a69cc81cd npm run deploy:aws
 AWS_PROFILE=AdministratorAccess-246830848999 npm run aws:recycle     # after editing the secret
 ```
 
@@ -32,10 +34,11 @@ Do these in order. Never paste credentials into chat, git, or `.env` on a shared
 5. **Set the URLs.** In the Ring app, go to *Account linking* → **Staging settings** and enter:
    | Field | URL |
    |---|---|
-   | Account Link URL | `https://wldincr4byncbgjikszktgcra40twwka.lambda-url.us-west-2.on.aws/ring/link` |
-   | Default Redirect URL | `https://wldincr4byncbgjikszktgcra40twwka.lambda-url.us-west-2.on.aws/ring/home` |
-   | Token Exchange URL | `https://wldincr4byncbgjikszktgcra40twwka.lambda-url.us-west-2.on.aws/ring/token-exchange` |
-   | Webhook URL | `https://wldincr4byncbgjikszktgcra40twwka.lambda-url.us-west-2.on.aws/ring/webhook` |
+   | Account Link URL | `https://carerelay.quirkworksllc.com/ring/link` |
+   | App Homepage URL | `https://carerelay.quirkworksllc.com/ring/config` |
+   | Default Redirect URL | `https://carerelay.quirkworksllc.com/ring/config` |
+   | Token Exchange URL | `https://carerelay.quirkworksllc.com/ring/token-exchange` |
+   | Webhook URL | `https://carerelay.quirkworksllc.com/ring/webhook` |
 6. **Connect.** Go to *Connect* → *Log in with Ring*, choose your camera and doorbell, and confirm. Ring then sends you to the CareRelay link page. Sign in as **June** (the owner) with the access code, and choose **Connect Ring**.
 7. **Check it.** The household page should show *Connected*, list your devices, and record `ring.linked` in the Activity log.
 
