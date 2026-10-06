@@ -11,7 +11,9 @@
     "ring:probe": "node scripts/ring-probe.ts",
     "build:lambda": "node scripts/build-lambda.ts",
     "deploy:aws": "node scripts/deploy-aws.ts",
-    "aws:recycle": "node scripts/recycle-lambda.ts"
+    "aws:recycle": "node scripts/recycle-lambda.ts",
+    "test:aws": "node --test test/store.test.ts",
+    "smoke:aws": "node scripts/aws-smoke.ts"
   },
   "license": "MIT",
   "type": "module",
