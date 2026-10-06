@@ -42,12 +42,7 @@ export function buildApp(repo: Repo) {
     c.header('X-Frame-Options', 'DENY');
   });
 
-  // App Homepage URL (Ring: "custom app configuration page for post-linking setup").
-  // Public explainer when signed out; setup for the owner; caregivers go to their visits.
-  app.get('/ring/config', async (c) => {
-    const who = await getViewer(c);
-    if (who?.role === 'caregiver') return c.redirect('/me');
-    const promise = html`
+  const ringPromise = () => html`
       <section class="card">
         <h2 style="margin-top:0">What CareRelay does with your Ring devices</h2>
         <ul>
@@ -59,13 +54,27 @@ export function buildApp(repo: Repo) {
         <h3>What it never does</h3>
         <ul><li>Download video or images, watch a live stream, identify people, unlock anything, or call emergency services.</li></ul>
       </section>`;
-    if (!who) {
-      return c.html(page({ title: 'Ring setup', flash: flash(c), body: html`
-        <h1>CareRelay</h1>
-        <p>A shared, consent-based record of planned visits and deliveries for someone living independently. QuirkWorks builds and runs it.</p>
-        ${promise}
-        <div class="actions"><a class="btn" href="/signin?next=${encodeURIComponent('/ring/config')}">Sign in to finish setup</a></div>` }));
-    }
+
+  // App Homepage URL and Default Redirect URL (registered with Ring as the site root).
+  // Signed out: public landing. Signed in: the person's home (owner household or caregiver visits).
+  app.get('/', async (c) => {
+    const who = await getViewer(c);
+    if (who) return c.redirect(who.role === 'owner' ? '/owner' : '/me');
+    return c.html(page({ title: 'Home', flash: flash(c), body: html`
+      <h1>CareRelay</h1>
+      <p>A shared, consent-based record of planned visits and deliveries for someone living independently.
+        The person whose home it is decides who sees each visit. The visiting caregiver confirms what happened.
+        If a visit isn't confirmed in time, a chosen contact gets a calm follow-up.</p>
+      ${ringPromise()}
+      <div class="actions"><a class="btn" href="/signin">Sign in</a></div>
+      <p class="small muted">Developed by QuirkWorks.</p>` }));
+  });
+
+  // Post-linking setup (Ring: "custom app configuration page for post-linking setup").
+  const ringSetup = async (c: Context) => {
+    const who = await getViewer(c);
+    if (!who) return c.redirect(`/signin?next=${encodeURIComponent(c.req.path)}`);
+    if (who.role === 'caregiver') return c.redirect('/me');
     const hh = (await repo.getHousehold(who.householdId))!;
     const d = dateTimeFormatter(hh.timezone);
     const acct = hh.ringAccountId ? await repo.getRing(hh.ringAccountId) : undefined;
@@ -92,10 +101,12 @@ export function buildApp(repo: Repo) {
           </form>`)}
         ${linked ? html`<form method="post" action="/owner/ring/sync"><div class="actions"><button class="secondary" type="submit">Refresh devices from Ring</button></div></form>` : ''}
       </section>
-      ${promise}
+      ${ringPromise()}
       <h2>Next steps</h2>
       <div class="actions"><a class="btn" href="/owner/visits/new">Schedule the first visit</a><a class="btn secondary" href="/owner">Go to your household</a></div>` }));
-  });
+  };
+  app.get('/ring', ringSetup);
+  app.get('/ring/config', ringSetup);
 
   app.route('/ring', ringRoutes(repo, getViewer));
 
@@ -165,7 +176,6 @@ export function buildApp(repo: Repo) {
     await next();
   };
 
-  authed.get('/', (c) => c.redirect(c.get('viewer').role === 'owner' ? '/owner' : '/me'));
 
   authed.get('/api/changes', async (c) => c.json({ latest: await repo.latestAuditAt(c.get('viewer').householdId) }));
 
@@ -210,7 +220,8 @@ export function buildApp(repo: Repo) {
             <td>${x.origin === 'demo' ? html`<span class="pill demo">Demo device</span>` : x.origin === 'ring_playground' ? 'Ring Playground' : 'Ring'}</td>
             <td class="small">${x.lastPollError ? html`<span class="pill bad">Error</span> ${x.lastPollError}` : x.lastPolledAt ? d(x.lastPolledAt) : '—'}</td></tr>`)}
         </tbody></table>` : html`<p class="muted">No devices yet.</p>`}
-        ${mode !== 'none' ? html`<form method="post" action="/owner/ring/sync"><div class="actions"><button class="secondary" type="submit">Refresh devices from Ring</button></div></form>` : ''}
+        <div class="actions">${mode !== 'none' ? html`<form method="post" action="/owner/ring/sync"><button class="secondary" type="submit">Refresh devices from Ring</button></form>` : ''}
+          <a class="btn secondary" href="/ring">Ring setup and door names</a></div>
       </section>
 
       <h2>Door activity not attached to a visit</h2>

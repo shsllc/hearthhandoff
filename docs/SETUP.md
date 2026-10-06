@@ -37,8 +37,8 @@ Do these in order. Never paste credentials into chat, git, or `.env` on a shared
    | Field | URL |
    |---|---|
    | Account Link URL | `https://carerelay.quirkworksllc.com/ring/link` |
-   | App Homepage URL | `https://carerelay.quirkworksllc.com/ring/config` |
-   | Default Redirect URL | `https://carerelay.quirkworksllc.com/ring/config` |
+   | App Homepage URL | `https://carerelay.quirkworksllc.com/` |
+   | Default Redirect URL | `https://carerelay.quirkworksllc.com/` |
    | Token Exchange URL | `https://carerelay.quirkworksllc.com/ring/token-exchange` |
    | Webhook URL | `https://carerelay.quirkworksllc.com/ring/webhook` |
 6. **Connect.** Go to *Connect* → *Log in with Ring*, choose your camera and doorbell, and confirm. Ring then sends you to the CareRelay link page. Sign in as **June** (the owner) with the access code, and choose **Connect Ring**.

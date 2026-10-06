@@ -196,8 +196,8 @@ export function ringRoutes(repo: Repo, getViewer: (c: any) => Promise<Viewer | n
     return c.redirect(`/ring/config?flash=${encodeURIComponent('Ring connected. ' + sync.message)}`);
   });
 
-  // App Homepage URL.
-  r.get('/home', (c) => c.redirect('/ring/config'));
+  // Older registrations pointed here; keep it working.
+  r.get('/home', (c) => c.redirect('/'));
 
   return r;
 }

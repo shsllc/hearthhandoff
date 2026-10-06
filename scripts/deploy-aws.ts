@@ -68,8 +68,8 @@ Register these on the Ring app's Account linking page (Staging tab):
   Account Link URL       ${url}/ring/link
   Token Exchange URL     ${url}/ring/token-exchange
   Webhook URL            ${url}/ring/webhook
-  App Homepage URL       ${url}/ring/config
-  Default Redirect URL   ${url}/ring/config
+  App Homepage URL       ${url}/
+  Default Redirect URL   ${url}/
 
 Seed the demo household into DynamoDB:
   STORE=dynamodb TABLE_NAME=${o.TableName} AWS_REGION=${region} npm run seed`);
