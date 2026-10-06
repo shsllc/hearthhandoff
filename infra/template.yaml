@@ -47,6 +47,7 @@ Resources:
   AppSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
+      Name: carerelay/runtime
       Description: CareRelay runtime secrets (Ring credentials, APP_SECRET, ACCESS_CODE)
       GenerateSecretString:
         SecretStringTemplate: '{"RING_CLIENT_ID":"","RING_CLIENT_SECRET":"","RING_HMAC_SIGNING_KEY":"","RING_ACCESS_TOKEN":"","ACCESS_CODE":""}'

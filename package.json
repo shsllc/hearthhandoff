@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "ring:probe": "node scripts/ring-probe.ts",
     "build:lambda": "node scripts/build-lambda.ts",
-    "deploy:aws": "node scripts/deploy-aws.ts"
+    "deploy:aws": "node scripts/deploy-aws.ts",
+    "aws:recycle": "node scripts/recycle-lambda.ts"
   },
   "license": "MIT",
   "type": "module",
