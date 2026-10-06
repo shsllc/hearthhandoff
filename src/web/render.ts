@@ -40,12 +40,16 @@ export interface FollowupCardOpts {
   canAct: boolean; contactName: string; ackName: string | null; resolvedName: string | null;
   caregiverName: string; caregiverPhone: string | null; residentName: string; residentPhone: string | null;
   t: (ms: number) => string; showVisitLink?: boolean;
+  /** Use h2 where the card sits directly under the page h1 (visit page); h3 under a section h2. */
+  topLevel?: boolean;
 }
 
 export function followupCard(f: Followup, v: Visit, o: FollowupCardOpts) {
   const open = f.resolvedAt === null;
   return html`<section class="card" aria-labelledby="fu-${f.id}">
-    <h3 id="fu-${f.id}">${open ? 'Follow-up needed' : 'Follow-up resolved'}: ${v.title}</h3>
+    ${o.topLevel
+      ? html`<h2 id="fu-${f.id}" style="margin-top:0">${open ? 'Follow-up needed' : 'Follow-up resolved'}: ${v.title}</h2>`
+      : html`<h3 id="fu-${f.id}">${open ? 'Follow-up needed' : 'Follow-up resolved'}: ${v.title}</h3>`}
     <p>${f.reason}</p>
     <ul>${f.context.map((c) => html`<li>${c}</li>`)}</ul>
     <p class="small muted">Opened ${o.t(f.createdAt)} for ${o.contactName} (${f.notifiedVia.map((n) => (n === 'email' ? 'emailed via Amazon SES' : 'in app')).join(', ')}).

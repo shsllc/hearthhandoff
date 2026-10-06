@@ -457,6 +457,14 @@ export function buildApp(repo: Repo) {
       <p><a href="/">← Back</a></p>
       <h1>${v.title}</h1>
       <p>${statusPill(v, nameOf(v.assignedPersonId))} ${v.scenarioLabel ? html`<span class="pill demo">${v.scenarioLabel}</span>` : ''}</p>
+      ${canConfirm ? html`<section class="card" aria-labelledby="confirm-h"><h2 id="confirm-h" style="margin-top:0">How did it go?</h2>
+        <form method="post" action="/visits/${v.id}/confirm">
+          <label for="cnote">Note (optional for “done”, helpful for a problem)</label>
+          <textarea id="cnote" name="note" rows="2" maxlength="500"></textarea>
+          <div class="actions"><button type="submit" name="outcome" value="completed">Visit done</button>
+          <button type="submit" name="outcome" value="problem" class="danger">There's a problem</button></div>
+        </form></section>` : ''}
+
       <section class="card"><table><tbody>
         <tr><th scope="row">Type</th><td>${kindLabel(v.kind)}</td></tr>
         <tr><th scope="row">When</th><td>${d(v.windowStart)}–${t(v.windowEnd)}</td></tr>
@@ -468,19 +476,13 @@ export function buildApp(repo: Repo) {
         ${v.notes ? html`<tr><th scope="row">Notes</th><td>${v.notes}</td></tr>` : ''}
       </tbody></table></section>
 
-      ${canConfirm ? html`<section class="card" aria-labelledby="confirm-h"><h2 id="confirm-h" style="margin-top:0">How did it go?</h2>
-        <form method="post" action="/visits/${v.id}/confirm">
-          <label for="cnote">Note (optional for “done”, helpful for a problem)</label>
-          <textarea id="cnote" name="note" rows="2" maxlength="500"></textarea>
-          <div class="actions"><button type="submit" name="outcome" value="completed">Visit done</button>
-          <button type="submit" name="outcome" value="problem" class="danger">There's a problem</button></div>
-        </form></section>` : ''}
+
 
       ${v.followups.map((f) => followupCard(f, v, {
         canAct: canActOnFollowup(who, v, f), contactName: nameOf(f.contactPersonId), ackName: f.acknowledgedBy ? nameOf(f.acknowledgedBy) : null,
         resolvedName: f.resolvedBy ? nameOf(f.resolvedBy) : null, caregiverName: nameOf(v.assignedPersonId),
         caregiverPhone: ppl.get(v.assignedPersonId)?.phone ?? null, residentName: hh.residentName,
-        residentPhone: [...ppl.values()].find((p) => p.role === 'owner')?.phone ?? null, t: d }))}
+        residentPhone: [...ppl.values()].find((p) => p.role === 'owner')?.phone ?? null, t: d, topLevel: true }))}
 
       <h2>Timeline</h2>
       <p class="small muted">Blue entries come from Ring and only show activity at the door. Green entries are what a person confirmed.</p>
