@@ -29,6 +29,8 @@ export function buildApp(repo: Repo) {
   }
 
   const flash = (c: Context) => c.req.query('flash') ?? null;
+  // A public deployment (HTTPS base URL) never offers the open person picker: it needs ACCESS_CODE.
+  const signinLocked = () => config.publicBaseUrl.startsWith('https://') && !config.accessCode;
   const safeNext = (n: unknown) => (typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') ? n : '/');
 
   // Form posts from our own pages only. Ring's server-to-server calls are exempt (JSON or no Origin).
@@ -46,6 +48,10 @@ export function buildApp(repo: Repo) {
 
   // --- sign-in (demo picker; deployed instances also require ACCESS_CODE) ---
   app.get('/signin', async (c) => {
+    if (signinLocked()) {
+      return c.html(page({ title: 'Sign in', body: html`<h1>Sign-in isn't set up yet</h1>
+        <p>This deployment has no access code. The owner needs to add <code>ACCESS_CODE</code> to the app's secret in AWS Secrets Manager.</p>` }), 503);
+    }
     const ownerOnly = c.req.query('owner_only') === '1';
     const hids = await repo.householdIds();
     const groups = [];
@@ -69,6 +75,7 @@ export function buildApp(repo: Repo) {
   });
 
   app.post('/signin', async (c) => {
+    if (signinLocked()) return c.text('Sign-in is disabled until ACCESS_CODE is set in Secrets Manager.', 503);
     const form = await c.req.parseBody();
     if (config.accessCode) {
       const given = Buffer.from(String(form.code ?? ''));
