@@ -12,7 +12,11 @@ export async function syncRingDevices(repo: Repo, hid: string): Promise<{ ok: bo
   try {
     const access = await accessForHousehold(repo, hid);
     if (!access) return { ok: false, message: 'Ring is not connected (no linked account and no Playground token).' };
-    const found = devicesFromList(await listDevices(access.token));
+    const raw = await listDevices(access.token);
+    // Shape only (key names), never values: lets us align the parser with Ring's real response.
+    const first = Array.isArray(raw?.data) ? raw.data[0] : undefined;
+    console.log(JSON.stringify({ ring_devices_shape: { top: Object.keys(raw ?? {}), item: Object.keys(first ?? {}), attributes: Object.keys(first?.attributes ?? {}) } }));
+    const found = devicesFromList(raw);
     for (const d of found) {
       let online: boolean | null = null;
       try {

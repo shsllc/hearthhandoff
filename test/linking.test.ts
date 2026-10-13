@@ -141,10 +141,14 @@ test('owner sign-in + valid nonce: POST then PATCH app-integrations, claim, and 
   assert.equal(dev.origin, 'ring_app');
 });
 
-test('a replayed link (same nonce after claim) is refused', async () => {
+test('a second link page after the claim claims nothing and says it is already connected', async () => {
   const june = await cookieFor('p_june');
   const time = String(Date.now());
-  assert.equal((await postLink(june, computeNonce('test-hmac-key', time, ACCOUNT), time)).status, 400);
+  const before = calls.filter((c) => c.path === '/v1/accounts/me/app-integrations').length;
+  const res = await postLink(june, computeNonce('test-hmac-key', time, ACCOUNT), time);
+  assert.equal(res.status, 302);
+  assert.ok(res.headers.get('location')!.includes('already%20connected'));
+  assert.equal(calls.filter((c) => c.path === '/v1/accounts/me/app-integrations').length, before, 'Ring not contacted again');
 });
 
 test('owner rename survives a Ring device sync', async () => {

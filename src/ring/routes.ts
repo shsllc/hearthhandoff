@@ -173,9 +173,17 @@ export function ringRoutes(repo: Repo, getViewer: (c: any) => Promise<Viewer | n
     if (!fresh.ok) return c.html(page({ title: 'Link expired', viewer, body: html`<h1>The link expired</h1><p>${fresh.reason}. Start again from the Ring app.</p>` }), 400);
     const accountId = matchNonce(config.ring.hmacKey, time, nonce, await repo.unclaimedAccountIds());
     if (!accountId) {
+      // A second open link page (e.g. Connect clicked twice) can't reclaim a token; if this household is
+      // already linked, say so instead of showing an error.
+      const hh = await repo.getHousehold(viewer.householdId);
+      const linked = hh?.ringAccountId ? await repo.getRing(hh.ringAccountId) : undefined;
+      if (linked?.status === 'completed') {
+        await repo.audit(viewer.householdId, viewer.id, 'ring.link_duplicate', 'link page submitted after the household was already linked');
+        return c.redirect('/ring/config?flash=' + encodeURIComponent('Ring is already connected. You can close any other Ring connection pages.'));
+      }
       await repo.audit(viewer.householdId, viewer.id, 'ring.link_failed', 'no unclaimed Ring token matched the nonce');
       return c.html(page({ title: 'Could not connect', viewer, body: html`<h1>We couldn't match this Ring connection</h1>
-        <p>The connection request didn't match a pending Ring authorization. This usually means it took more than 10 minutes. Start again from the Ring app.</p>` }), 400);
+        <p>The connection request didn't match a pending Ring authorization. This usually means it took more than 10 minutes. Start again from the Ring App Store: Staging Apps → HearthHandoff → Connect.</p>` }), 400);
     }
     const person = await repo.getPerson(viewer.householdId, viewer.id);
     try {
