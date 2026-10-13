@@ -17,6 +17,11 @@ export async function notifyFollowup(repo: Repo, hid: string, visitId: string, f
     await repo.audit(hid, 'system', 'followup.email_skipped', `${contact?.name ?? 'contact'} has no email on file`);
     return;
   }
+  // Placeholder addresses on reserved TLDs (RFC 2606) would bounce and hurt SES sending reputation.
+  if (/\.(test|example|invalid|localhost)$/i.test(contact.email.trim())) {
+    await repo.audit(hid, 'system', 'followup.email_skipped', `${contact.name}'s address is a placeholder; in-app only`);
+    return;
+  }
   const when = dateTimeFormatter(hh.timezone)(visit.windowStart);
   const link = `${config.publicBaseUrl}/visits/${visit.id}`;
   const text = [
