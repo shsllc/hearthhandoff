@@ -314,10 +314,17 @@ export function buildApp(repo: Repo) {
     const hh = (await repo.getHousehold(who.householdId))!;
     const d = dateTimeFormatter(hh.timezone);
     const log = await repo.auditLog(who.householdId);
+    // Show door and people names instead of internal / Ring identifiers.
+    const deviceNames = new Map((await repo.devices(who.householdId)).map((x) => [x.id, x.name]));
+    const ppl = await peopleById(repo, who.householdId);
+    const actorName = (a: string) => ppl.get(a)?.name ?? ({ ring: 'Ring', system: 'HearthHandoff', seed: 'Setup' } as Record<string, string>)[a] ?? a;
+    const readable = (text: string) => text
+      .replace(/ava1\.ring\.device\.[A-Za-z0-9]+/g, (id) => deviceNames.get(id) ?? 'a Ring device')
+      .replace(/ava1\.ring\.account\.[A-Za-z0-9]+/g, 'the linked Ring account');
     return c.html(page({ title: 'Activity log', viewer: who, body: html`
       <h1>Activity log</h1><p class="muted">The last 30 days of everything HearthHandoff did for this household, including duplicate and late Ring deliveries.</p>
       <table><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead><tbody>
-      ${log.map((a) => html`<tr><td class="small">${d(a.at)}</td><td class="small">${a.actor}</td><td><strong>${a.action}</strong><div class="small">${a.detail}</div></td></tr>`)}
+      ${log.map((a) => html`<tr><td class="small" style="white-space:nowrap">${d(a.at)}</td><td class="small">${actorName(a.actor)}</td><td><strong>${a.action}</strong><div class="small">${readable(a.detail)}</div></td></tr>`)}
       </tbody></table>` }));
   });
 
