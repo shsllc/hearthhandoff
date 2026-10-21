@@ -11,11 +11,17 @@ export const SOURCE_LABEL: Record<EventSource, string> = {
   local_replay: 'Local replay, not from Ring',
 };
 
-/** Two records of the same device+type this close together are the same press/motion seen via two paths. */
-export const CROSS_SOURCE_MERGE_MS = 5_000;
+/**
+ * A webhook copy and an Event History copy of the same press/motion are merged when they are this close.
+ * Measured on real devices: history `start` runs 6–10 s ahead of the webhook `timestamp`.
+ * Only copies from *different* sources merge, so two real motions close together are never collapsed.
+ */
+export const CROSS_SOURCE_MERGE_MS = 30_000;
+
+export const idsOf = (e: Pick<DoorEvent, 'ringEventId' | 'ringEventIds'>) => e.ringEventIds ?? (e.ringEventId ? [e.ringEventId] : []);
 
 export interface IngestResult {
-  outcome: 'stored' | 'merged' | 'unknown_device';
+  outcome: 'stored' | 'merged' | 'already_seen' | 'unknown_device';
   eventId?: string;
   matchedVisitIds: string[];
 }
@@ -43,18 +49,27 @@ export async function ingestDoorEvent(repo: Repo, ev: NormalizedDoorEvent, sourc
   }
 
   const nearby = (await repo.eventsInRange(hid, ev.deviceId, ev.occurredAt - CROSS_SOURCE_MERGE_MS, ev.occurredAt + CROSS_SOURCE_MERGE_MS))
-    .filter((e) => e.type === ev.type)
-    .sort((a, b) => Math.abs(a.occurredAt - ev.occurredAt) - Math.abs(b.occurredAt - ev.occurredAt));
+    .filter((e) => e.type === ev.type);
 
-  if (nearby[0]) {
-    const existing = nearby[0];
-    existing.sources = [...new Set([...existing.sources, source])];
-    existing.deliveryCount += 1;
-    existing.lastReceivedAt = now;
-    existing.subType ??= ev.subType;
-    await repo.putEvent(existing);
+  // 1) Same Ring event seen again (the history poll re-reads recent events every minute): no write, no audit.
+  if (ev.ringEventId) {
+    const same = nearby.find((e) => idsOf(e).includes(ev.ringEventId!) && e.sources.includes(source));
+    if (same) return { outcome: 'already_seen', eventId: same.id, matchedVisitIds: [] };
+  }
+
+  // 2) The other source's copy of the same motion/press: merge into one event.
+  const partner = nearby
+    .filter((e) => !e.sources.includes(source))
+    .sort((a, b) => Math.abs(a.occurredAt - ev.occurredAt) - Math.abs(b.occurredAt - ev.occurredAt))[0];
+  if (partner) {
+    partner.sources = [...new Set([...partner.sources, source])];
+    partner.ringEventIds = [...new Set([...idsOf(partner), ...(ev.ringEventId ? [ev.ringEventId] : [])])];
+    partner.deliveryCount += 1;
+    partner.lastReceivedAt = now;
+    partner.subType ??= ev.subType;
+    await repo.putEvent(partner);
     await repo.audit(hid, 'ring', 'event.merged', `${describeEvent(ev)} on ${ev.deviceId} also seen via ${SOURCE_LABEL[source]}`);
-    return { outcome: 'merged', eventId: existing.id, matchedVisitIds: [] };
+    return { outcome: 'merged', eventId: partner.id, matchedVisitIds: [] };
   }
 
   const id = newId('evt');
@@ -62,6 +77,7 @@ export async function ingestDoorEvent(repo: Repo, ev: NormalizedDoorEvent, sourc
     ...keys.event(hid, ev.deviceId, ev.occurredAt, id),
     id, householdId: hid, deviceId: ev.deviceId, type: ev.type, subType: ev.subType, occurredAt: ev.occurredAt,
     firstReceivedAt: now, lastReceivedAt: now, sources: [source], deliveryCount: 1, ringEventId: ev.ringEventId,
+    ringEventIds: ev.ringEventId ? [ev.ringEventId] : [],
     attached: false, ttl: repo.eventTtl(ev.occurredAt),
   };
   await repo.putEvent(event);

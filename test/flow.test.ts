@@ -163,3 +163,28 @@ test('unattached events expire under the retention window; attached ones do not'
   assert.equal(stored.ttl, Math.floor((at + 7 * 86_400_000) / 1000));
   assert.ok(events.filter((e) => e.attached).every((e) => e.ttl === undefined));
 });
+
+test('real-device pattern: history copy 8 s ahead of the webhook merges; re-polls are skipped without writes', async () => {
+  const t = Date.now() - 20 * M;
+  const vid = await makeVisit({ windowStart: t - 10 * M, windowEnd: t + 10 * M, confirmBy: t + 60 * M });
+  const hook = await ingestDoorEvent(repo, { ringEventId: 'dev.front_human_x', requestId: 'r-real', accountId: null, deviceId: 'dev.front', type: 'motion', subType: 'human', occurredAt: t + 8000 }, 'ring_webhook');
+  assert.equal(hook.outcome, 'stored');
+  const hist = { ringEventId: 'hist-real-1', requestId: null, accountId: null, deviceId: 'dev.front', type: 'motion' as const, subType: null, occurredAt: t };
+  assert.equal((await ingestDoorEvent(repo, hist, 'ring_history')).outcome, 'merged');
+  const before = (await repo.getEventBySk(HID, (await repo.getVisit(HID, vid))!.matches.find((m) => m.eventId === hook.eventId)!.eventSk))!;
+  for (let i = 0; i < 3; i++) assert.equal((await ingestDoorEvent(repo, hist, 'ring_history')).outcome, 'already_seen');
+  const after = (await repo.getEventBySk(HID, before.sk))!;
+  assert.equal(after.version, before.version, 'no write on re-poll');
+  assert.equal(after.deliveryCount, 2);
+  assert.equal(after.subType, 'human', 'webhook classification kept');
+  assert.equal((await repo.getVisit(HID, vid))!.matches.filter((m) => m.eventId === hook.eventId).length, 1);
+});
+
+test('two genuine webhook motions 29 s apart stay separate', async () => {
+  const t = Date.now() - 40 * M;
+  const a = await ingestDoorEvent(repo, { ringEventId: 'w1', requestId: 'r-w1', accountId: null, deviceId: 'dev.front', type: 'motion', subType: 'human', occurredAt: t }, 'ring_webhook');
+  const b = await ingestDoorEvent(repo, { ringEventId: 'w2', requestId: 'r-w2', accountId: null, deviceId: 'dev.front', type: 'motion', subType: 'human', occurredAt: t + 29_000 }, 'ring_webhook');
+  assert.equal(a.outcome, 'stored');
+  assert.equal(b.outcome, 'stored');
+  assert.notEqual(a.eventId, b.eventId);
+});

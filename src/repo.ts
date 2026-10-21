@@ -47,6 +47,8 @@ export interface DoorEvent extends Item {
   id: string; householdId: string; deviceId: string; type: 'button_press' | 'motion'; subType: string | null;
   occurredAt: number; firstReceivedAt: number; lastReceivedAt: number; sources: EventSource[]; deliveryCount: number;
   ringEventId: string | null; attached: boolean;
+  /** Every Ring id this event was seen under (webhook data.id, history id), so re-polls are recognized without a write. */
+  ringEventIds?: string[];
 }
 export interface RingAccount extends Item {
   accountId: string; householdId: string | null; accessSealed: string; refreshSealed: string; accessExpiresAt: number;
