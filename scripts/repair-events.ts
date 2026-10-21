@@ -26,6 +26,14 @@ for (const h of historyOnly) {
   webhookOnly.delete(partner);
   merges.push({ keep: partner, drop: h });
 }
+// Pass 2: history-only copies re-stored after the fix, whose motion already has a merged history copy.
+const kept = new Set(merges.map((m) => m.keep.id));
+for (const h of historyOnly) {
+  if (merges.some((m) => m.drop.id === h.id)) continue;
+  const twin = events.find((e) => e.id !== h.id && e.deviceId === h.deviceId && e.type === h.type && Math.abs(e.occurredAt - h.occurredAt) <= CROSS_SOURCE_MERGE_MS
+    && e.sources.includes('ring_history') && e.sources.includes('ring_webhook') && !kept.has(e.id));
+  if (twin) merges.push({ keep: twin, drop: h });
+}
 const dropped = new Set(merges.map((m) => m.drop.id));
 const inflated = events.filter((e) => !dropped.has(e.id) && e.deliveryCount > e.sources.length + 2);
 console.log(`${events.length} events; ${merges.length} duplicate pairs to merge; ${inflated.length} inflated counters to reset. ${apply ? 'APPLYING' : 'dry run (pass --apply)'}`);

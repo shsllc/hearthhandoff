@@ -43,17 +43,26 @@ export async function syncRingDevices(repo: Repo, hid: string): Promise<{ ok: bo
   }
 }
 
+/** On a device's first poll, look back this far (webhooks are the primary path). */
+export const HISTORY_FIRST_LOOKBACK_MS = 15 * 60_000;
+/** Re-check this much before the high-water mark, in case Ring indexes an event late. */
+export const HISTORY_OVERLAP_MS = 5 * 60_000;
+
 export async function pollHistory(repo: Repo, hid: string): Promise<{ fetched: number; stored: number; error?: string }> {
   const access = await accessForHousehold(repo, hid).catch(() => null);
   if (!access) return { fetched: 0, stored: 0 };
   let fetched = 0, stored = 0;
   for (const d of (await repo.devices(hid)).filter((x) => x.origin !== 'demo')) {
     try {
-      // First page only: newest first, and the tick runs every minute.
-      const events = normalizeHistoryEvents(await eventHistory(access.token, d.id, HISTORY_EVENT_FILTER), access.accountId);
+      // First page only (newest first); the tick runs every minute. History is a backstop for missed webhooks,
+      // so only events past this device's high-water mark (minus a small overlap for late indexing) are considered.
+      const all = normalizeHistoryEvents(await eventHistory(access.token, d.id, HISTORY_EVENT_FILTER), access.accountId);
+      const floor = (d.historyHighWater ?? Date.now() - HISTORY_FIRST_LOOKBACK_MS) - HISTORY_OVERLAP_MS;
+      const events = all.filter((ev) => ev.occurredAt > floor);
       fetched += events.length;
       for (const ev of events) if ((await ingestDoorEvent(repo, ev, 'ring_history')).outcome === 'stored') stored++;
-      await repo.putDevice({ ...d, lastPolledAt: Date.now(), lastPollError: null });
+      const newest = all.reduce((m, ev) => Math.max(m, ev.occurredAt), d.historyHighWater ?? 0);
+      await repo.putDevice({ ...d, lastPolledAt: Date.now(), lastPollError: null, historyHighWater: newest || (d.historyHighWater ?? null) });
     } catch (e) {
       const msg = String((e as Error).message).slice(0, 300);
       await repo.putDevice({ ...d, lastPolledAt: Date.now(), lastPollError: msg });

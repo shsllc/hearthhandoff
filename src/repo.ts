@@ -26,6 +26,8 @@ export interface Person extends Item { id: string; householdId: string; name: st
 export interface Device extends Item {
   id: string; householdId: string; name: string; kind: string | null; online: boolean | null; offlineSince: number | null;
   origin: 'ring_app' | 'ring_playground' | 'demo'; updatedAt: number; lastPolledAt?: number | null; lastPollError?: string | null;
+  /** Newest Event History start time already ingested (epoch ms); the backstop poll only looks past this. */
+  historyHighWater?: number | null;
   /** True once the owner renamed it; Ring syncs then keep the owner's name. */
   nameSetByOwner?: boolean;
 }
