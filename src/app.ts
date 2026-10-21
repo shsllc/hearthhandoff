@@ -13,6 +13,7 @@ import { matchVisitAgainstEvents } from './domain/ingest.ts';
 import { describeEvent, MATCH_RULE_TEXT } from './domain/matching.ts';
 import { ringRoutes, handleWebhook, buildReplayPayload, signReplay, replayKey } from './ring/routes.ts';
 import { syncRingDevices, tick } from './worker.ts';
+import { renderDemo } from './web/demo.ts';
 
 const COOKIE = 'cr_session';
 const SESSION_DAYS = 14;
@@ -61,6 +62,9 @@ export function buildApp(repo: Repo) {
         <ul><li>Download video or images, watch a live stream, identify people, unlock anything, or call emergency services.</li></ul>
       </section>`;
 
+  // Public, read-only demo for judges: no sign-in, no writes.
+  app.get('/demo', async (c) => c.html(page({ title: 'Demo', body: await renderDemo(repo) })));
+
   // App Homepage URL and Default Redirect URL (registered with Ring as the site root).
   // Signed out: public landing. Signed in: the person's home (owner household or caregiver visits).
   app.get('/', async (c) => {
@@ -77,7 +81,7 @@ export function buildApp(repo: Repo) {
         The person whose home it is decides who sees each visit. The visiting caregiver confirms what happened.
         If a visit isn't confirmed in time, a chosen contact gets a calm follow-up.</p>
       ${ringPromise()}
-      <div class="actions"><a class="btn" href="/signin">Sign in</a></div>
+      <div class="actions"><a class="btn" href="/demo">See the demo (no sign-in)</a><a class="btn secondary" href="/signin">Sign in</a></div>
       <p class="small muted">Developed by QuirkWorks.</p>` }));
   });
 
@@ -198,6 +202,8 @@ export function buildApp(repo: Repo) {
     const ppl = await peopleById(repo, who.householdId);
     const nameOf = (id: string) => ppl.get(id)?.name ?? 'Someone';
     const visits = await visibleVisits(repo, who, Date.now() - 3 * 86_400_000);
+    const past = (await visibleVisits(repo, who, Date.now() - 30 * 86_400_000))
+      .filter((v) => v.windowEnd < Date.now() - 3 * 86_400_000).sort((a, b) => b.windowStart - a.windowStart).slice(0, 10);
     const followups = await openFollowupsFor(repo, who);
     const devices = await repo.devices(who.householdId);
     const unattached = await unattachedEvents(repo, who.householdId);
@@ -217,6 +223,7 @@ export function buildApp(repo: Repo) {
 
       <h2>Visits</h2>
       ${visits.length === 0 ? html`<p class="muted">Nothing scheduled.</p>` : visits.map((v) => visitSummary(v, nameOf(v.assignedPersonId), t, d))}
+      ${past.length ? html`<details><summary>Past visits (${past.length})</summary>${past.map((v) => visitSummary(v, nameOf(v.assignedPersonId), t, d))}</details>` : ''}
 
       <h2>Ring connection</h2>
       <section class="card">

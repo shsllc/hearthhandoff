@@ -188,3 +188,13 @@ test('two genuine webhook motions 29 s apart stay separate', async () => {
   assert.equal(b.outcome, 'stored');
   assert.notEqual(a.eventId, b.eventId);
 });
+
+test('public demo is reachable without sign-in, read-only, and labels sample data', async () => {
+  const res = await app.fetch(new Request(`${ORIGIN}/demo`));
+  assert.equal(res.status, 200);
+  const body = await res.text();
+  assert.ok(body.includes('Sample household'));
+  assert.ok(body.includes('Local replay, not from Ring'), 'sample events carry the replay label');
+  assert.ok(!/<form/i.test(body), 'no forms: nothing can be changed');
+  assert.ok(body.includes('does not show who it was'));
+});

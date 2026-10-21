@@ -123,7 +123,8 @@ export function devicesFromList(body: any): RingDeviceSummary[] {
     .map((d) => ({
       id: String(d?.id ?? ''),
       name: String(d?.attributes?.name ?? d?.attributes?.description ?? d?.name ?? 'Ring device'),
-      kind: (d?.attributes?.kind ?? d?.attributes?.type ?? d?.type ?? null) as string | null,
+      // `type` at the top level is the JSON:API resource type ("devices"), not the device kind.
+      kind: (d?.attributes?.kind ?? d?.attributes?.device_type ?? d?.attributes?.type ?? null) as string | null,
     }))
     .filter((d) => d.id);
 }
