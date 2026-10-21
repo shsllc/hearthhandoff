@@ -122,7 +122,8 @@ export async function renderDemo(repo: Repo, now = Date.now()) {
       <p>Separately, HearthHandoff is linked to a real Ring account through Ring's one-way account linking. Over the last 7 days it has received:</p>
       <ul>
         <li><strong>${real.events}</strong> real door events from <strong>${real.devices}</strong> Ring devices, <strong>${real.person}</strong> of them classified by Ring as a person</li>
-        <li><strong>${real.webhook}</strong> by HMAC-signed webhook, ${real.both} also confirmed by the Event History API and merged into one entry</li>
+        <li><strong>${real.webhook}</strong> delivered by HMAC-signed webhook${real.both === real.webhook ? ', every one of them also confirmed by the Event History API and merged into a single entry' : html`, ${real.both} of them also confirmed by the Event History API and merged into a single entry`}</li>
+        ${real.events > real.webhook ? html`<li><strong>${real.events - real.webhook}</strong> more found only by the Event History backstop poll</li>` : ''}
         ${real.medianLagS !== null ? html`<li>Median webhook delay: about <strong>${real.medianLagS} s</strong> after the motion</li>` : ''}
         ${real.matchedVisits ? html`<li><strong>${real.matchedVisits}</strong> real visit${real.matchedVisits === 1 ? '' : 's'} matched to real door activity</li>` : ''}
       </ul>
