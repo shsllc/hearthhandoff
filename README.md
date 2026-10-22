@@ -7,6 +7,8 @@ Built for **Build, Ship, Shape: Amazon Developer Hackathon 2026**, Ring track, u
 
 **Try it without signing in:** https://hearthhandoff.quirkworksllc.com/demo (read-only, fictional household, with aggregate proof from a real Ring account).
 
+**Demo video (2:16):** https://youtu.be/_V57VzUkBcY
+
 ## Verified on real Ring hardware (2026-10-13 to 10-21)
 - One-way account linking completed against a real Ring account through a private app: token exchange → nonce claim after sign-in → `POST`/`PATCH /v1/accounts/me/app-integrations` → signed `app_integration_added` webhook.
 - **103 real motion events** from two Ring cameras. 92 arrived by HMAC-verified webhook (median delay about 1 s), and each was also confirmed by the Event History API and merged into one entry. 11 were found only by the history backstop. 77 were classified by Ring as a person.
