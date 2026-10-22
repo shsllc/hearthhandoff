@@ -313,7 +313,10 @@ export function buildApp(repo: Repo) {
     const who = c.get('viewer');
     const hh = (await repo.getHousehold(who.householdId))!;
     const d = dateTimeFormatter(hh.timezone);
-    const log = await repo.auditLog(who.householdId);
+    const showAll = c.req.query('all') === '1';
+    const fullLog = await repo.auditLog(who.householdId);
+    // Sign-ins are routine; hidden by default so Ring and visit activity stand out.
+    const log = showAll ? fullLog : fullLog.filter((a) => a.action !== 'signin');
     // Show door and people names instead of internal / Ring identifiers.
     const deviceNames = new Map((await repo.devices(who.householdId)).map((x) => [x.id, x.name]));
     const ppl = await peopleById(repo, who.householdId);
@@ -322,7 +325,8 @@ export function buildApp(repo: Repo) {
       .replace(/ava1\.ring\.device\.[A-Za-z0-9]+/g, (id) => deviceNames.get(id) ?? 'a Ring device')
       .replace(/ava1\.ring\.account\.[A-Za-z0-9]+/g, 'the linked Ring account');
     return c.html(page({ title: 'Activity log', viewer: who, body: html`
-      <h1>Activity log</h1><p class="muted">The last 30 days of everything HearthHandoff did for this household, including duplicate and late Ring deliveries.</p>
+      <h1>Activity log</h1><p class="muted">The last 30 days of everything HearthHandoff did for this household, including duplicate and late Ring deliveries.
+        ${showAll ? html`<a href="/owner/audit">Hide sign-ins</a>` : html`Sign-ins are hidden. <a href="/owner/audit?all=1">Show everything</a>`}</p>
       <table><thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th></tr></thead><tbody>
       ${log.map((a) => html`<tr><td class="small" style="white-space:nowrap">${d(a.at)}</td><td class="small">${actorName(a.actor)}</td><td><strong>${a.action}</strong><div class="small">${readable(a.detail)}</div></td></tr>`)}
       </tbody></table>` }));
@@ -464,15 +468,20 @@ export function buildApp(repo: Repo) {
     const deviceName = (id: string | null) => (id ? devices.find((x) => x.id === id)?.name ?? 'Ring device' : 'any connected device');
     const events = await matchedEvents(repo, v);
     const isAssigned = v.assignedPersonId === who.id;
-    const canConfirm = isAssigned && (v.status === 'scheduled' || v.status === 'unconfirmed');
+    // The visitor confirms what they did; the person whose home it is can confirm what they saw.
+    const canConfirm = (isAssigned || who.role === 'owner') && (v.status === 'scheduled' || v.status === 'unconfirmed');
+    const roleOf = (id: string) => (id === v.assignedPersonId ? 'visitor' : ppl.get(id)?.role === 'owner' ? 'household owner' : 'trusted person');
 
     type Entry = { at: number; node: unknown };
     const entries: Entry[] = [
       { at: v.windowStart, node: html`<li><strong>Visit window opens</strong> · ${t(v.windowStart)}</li>` },
       { at: v.windowEnd, node: html`<li><strong>Visit window ends</strong> · ${t(v.windowEnd)}</li>` },
       ...events.map(({ event, match }) => ({ at: event.occurredAt, node: eventItem(event, match, deviceName(event.deviceId), t) })),
-      ...v.confirmations.map((cf) => ({ at: cf.at, node: html`<li class="person"><strong>${cf.outcome === 'completed' ? `${nameOf(cf.personId)} confirmed the visit` : `${nameOf(cf.personId)} reported a problem`}</strong> · ${t(cf.at)}
-        ${cf.note ? html`<p>“${cf.note}”</p>` : ''}<p class="caveat">Confirmed by the person, in HearthHandoff.</p></li>` })),
+      ...v.confirmations.map((cf) => ({ at: cf.at, node: html`<li class="person"><strong>${cf.outcome === 'completed' ? `${nameOf(cf.personId)} (${roleOf(cf.personId)}) confirmed the visit` : `${nameOf(cf.personId)} (${roleOf(cf.personId)}) reported a problem`}</strong> · ${t(cf.at)}
+        ${cf.note ? html`<p>“${cf.note}”</p>` : ''}<p class="caveat">Confirmed by a person, in HearthHandoff.</p></li>` })),
+      ...v.followups.filter((f) => f.resolvedAt && f.resolvedBy && f.resolutionNote && !v.confirmations.some((cf) => cf.personId === f.resolvedBy && Math.abs(cf.at - f.resolvedAt!) < 5000))
+        .map((f) => ({ at: f.resolvedAt!, node: html`<li class="person"><strong>${nameOf(f.resolvedBy!)} (${roleOf(f.resolvedBy!)}) resolved the follow-up</strong> · ${t(f.resolvedAt!)}
+          <p>“${f.resolutionNote}”</p><p class="caveat">A second-hand resolution, not a confirmation by the visitor.</p></li>` })),
       ...v.followups.map((f) => ({ at: f.createdAt, node: html`<li class="alert"><strong>Follow-up opened for ${nameOf(f.contactPersonId)}</strong> · ${t(f.createdAt)}</li>` })),
     ];
     if (events.length === 0) entries.push({ at: v.windowEnd + 1, node: html`<li class="ring"><strong>No door activity recorded near this visit</strong><p class="caveat">This is not evidence of a problem. People may use another door, motion zones may not cover them, or events may arrive late.</p></li>` });
@@ -482,11 +491,12 @@ export function buildApp(repo: Repo) {
       <p><a href="/">← Back</a></p>
       <h1>${v.title}</h1>
       <p>${statusPill(v, nameOf(v.assignedPersonId))} ${v.scenarioLabel ? html`<span class="pill demo">${v.scenarioLabel}</span>` : ''}</p>
-      ${canConfirm ? html`<section class="card" aria-labelledby="confirm-h"><h2 id="confirm-h" style="margin-top:0">How did it go?</h2>
+      ${canConfirm ? html`<section class="card" aria-labelledby="confirm-h"><h2 id="confirm-h" style="margin-top:0">${isAssigned ? 'How did it go?' : `Did ${nameOf(v.assignedPersonId)}'s visit happen?`}</h2>
+        ${isAssigned ? '' : html`<p class="small muted">As the household owner, you can close this visit yourself. It will show as confirmed by you, not by ${nameOf(v.assignedPersonId)}.</p>`}
         <form method="post" action="/visits/${v.id}/confirm">
           <label for="cnote">Note (optional for “done”, helpful for a problem)</label>
           <textarea id="cnote" name="note" rows="2" maxlength="500"></textarea>
-          <div class="actions"><button type="submit" name="outcome" value="completed">Visit done</button>
+          <div class="actions"><button type="submit" name="outcome" value="completed">${isAssigned ? 'Visit done' : 'Yes, the visit happened'}</button>
           <button type="submit" name="outcome" value="problem" class="danger">There's a problem</button></div>
         </form></section>` : ''}
 
@@ -524,13 +534,15 @@ export function buildApp(repo: Repo) {
     const note = String(form.note ?? '').trim().slice(0, 500) || null;
     let ok = false;
     const v = await repo.updateVisit(who.householdId, c.req.param('id'), (v) => {
-      if (v.assignedPersonId !== who.id || (v.status !== 'scheduled' && v.status !== 'unconfirmed')) return false;
+      const isVisitor = v.assignedPersonId === who.id;
+      if ((!isVisitor && who.role !== 'owner') || (v.status !== 'scheduled' && v.status !== 'unconfirmed')) return false;
       v.confirmations.push({ id: newId('cf'), personId: who.id, outcome, note, at: Date.now() });
       v.status = outcome === 'completed' ? 'confirmed' : 'problem';
+      v.closedByLabel = isVisitor ? who.name : `${who.name} (household owner)`;
       for (const f of v.followups) if (f.resolvedAt === null) { f.resolvedAt = Date.now(); f.resolvedBy = who.id; f.resolutionNote = `${who.name} confirmed after the follow-up opened`; }
       ok = true;
     });
-    if (!v || !ok) return c.redirect(`/visits/${c.req.param('id')}?flash=` + encodeURIComponent('Only the assigned visitor can confirm an open visit.'));
+    if (!v || !ok) return c.redirect(`/visits/${c.req.param('id')}?flash=` + encodeURIComponent('Only the visitor or the household owner can close an open visit.'));
     await repo.audit(who.householdId, who.id, outcome === 'completed' ? 'visit.confirmed' : 'visit.problem', `${v.title}${note ? `: ${note}` : ''}`);
     return c.redirect(`/visits/${v.id}?flash=` + encodeURIComponent(outcome === 'completed' ? 'Thanks. The visit is marked done.' : 'Thanks. Your problem report was shared.'));
   });
@@ -556,6 +568,11 @@ export function buildApp(repo: Repo) {
       const f = v.followups.find((x) => x.id === fid);
       if (!f || f.resolvedAt || !canActOnFollowup(who, v, f)) return false;
       f.resolvedAt = Date.now(); f.resolvedBy = who.id; f.resolutionNote = note;
+      // Resolving closes an unconfirmed visit, labeled as second-hand so it never reads as the visitor's confirmation.
+      if (v.status === 'unconfirmed' && v.followups.every((x) => x.resolvedAt)) {
+        v.status = 'resolved';
+        v.closedByLabel = who.role === 'owner' ? `${who.name} (household owner)` : `${who.name} (follow-up contact)`;
+      }
     });
     if (v) await repo.audit(who.householdId, who.id, 'followup.resolved', `${v.title}: ${note}`);
     return c.redirect(`/visits/${c.req.param('id')}?flash=` + encodeURIComponent('Follow-up resolved.'));

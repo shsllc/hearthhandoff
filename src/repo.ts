@@ -18,7 +18,7 @@ const pad = (ms: number) => String(Math.max(0, Math.floor(ms))).padStart(13, '0'
 const sec = (ms: number) => Math.floor(ms / 1000);
 
 export type Role = 'owner' | 'caregiver';
-export type VisitStatus = 'scheduled' | 'confirmed' | 'problem' | 'unconfirmed' | 'cancelled';
+export type VisitStatus = 'scheduled' | 'confirmed' | 'problem' | 'unconfirmed' | 'resolved' | 'cancelled';
 export type EventSource = 'ring_webhook' | 'ring_history' | 'local_replay';
 
 export interface Household extends Item { id: string; name: string; residentName: string; timezone: string; createdAt: number; ringAccountId?: string | null }
@@ -43,6 +43,8 @@ export interface Visit extends Item {
   assignedPersonId: string; followupPersonId: string; deviceId: string | null; viewerIds: string[];
   windowStart: number; windowEnd: number; confirmBy: number; earlyGraceMin: number; lateGraceMin: number;
   status: VisitStatus; scenarioLabel: string | null; createdBy: string; createdAt: number;
+  /** Who closed the visit and how they relate to it, shown on the status pill (e.g. "June (household owner)"). */
+  closedByLabel?: string | null;
   matches: Match[]; confirmations: Confirmation[]; followups: Followup[];
 }
 export interface DoorEvent extends Item {

@@ -7,8 +7,9 @@ export const DOOR_CAVEAT = 'Ring recorded activity at the door. This does not sh
 
 export function statusPill(v: Visit, assignedName: string, now = Date.now()) {
   switch (v.status) {
-    case 'confirmed': return html`<span class="pill ok">Confirmed by ${assignedName}</span>`;
-    case 'problem': return html`<span class="pill bad">Problem reported</span>`;
+    case 'confirmed': return html`<span class="pill ok">Confirmed by ${v.closedByLabel ?? assignedName}</span>`;
+    case 'resolved': return html`<span class="pill ok">Resolved by ${v.closedByLabel ?? 'follow-up contact'}</span>`;
+    case 'problem': return html`<span class="pill bad">Problem reported${v.closedByLabel ? ` by ${v.closedByLabel}` : ''}</span>`;
     case 'unconfirmed': return html`<span class="pill warn">Not confirmed · follow-up open</span>`;
     case 'cancelled': return html`<span class="pill plain">Cancelled</span>`;
     default:

@@ -198,3 +198,32 @@ test('public demo is reachable without sign-in, read-only, and labels sample dat
   assert.ok(!/<form/i.test(body), 'no forms: nothing can be changed');
   assert.ok(body.includes('does not show who it was'));
 });
+
+test('the household owner can close a visit; it is labeled as hers, not the visitor\'s', async () => {
+  const vid = await makeVisit();
+  const priya = await signIn('p_priya');
+  await priya(`/visits/${vid}/confirm`, { outcome: 'completed' });
+  assert.equal((await repo.getVisit(HID, vid))!.status, 'scheduled', 'an unrelated trusted person cannot close it');
+  const june = await signIn('p_june');
+  await june(`/visits/${vid}/confirm`, { outcome: 'completed', note: 'Dana came at 4:05, all good' });
+  const v = (await repo.getVisit(HID, vid))!;
+  assert.equal(v.status, 'confirmed');
+  assert.equal(v.closedByLabel, 'June (household owner)');
+  const page = await (await june(`/visits/${vid}`)).text();
+  assert.ok(page.includes('Confirmed by June (household owner)'));
+});
+
+test('the follow-up contact resolving with a note closes an unconfirmed visit as second-hand', async () => {
+  const now = Date.now();
+  const vid = await makeVisit({ windowStart: now - 90 * M, windowEnd: now - 60 * M, confirmBy: now - M });
+  await tick(repo);
+  const fu = (await repo.getVisit(HID, vid))!.followups[0];
+  const sam = await signIn('p_sam');
+  await sam(`/visits/${vid}/followups/${fu.id}/resolve`, { note: 'Called Dana, she visited at 4:10' });
+  const v = (await repo.getVisit(HID, vid))!;
+  assert.equal(v.status, 'resolved');
+  assert.equal(v.closedByLabel, 'Sam (follow-up contact)');
+  const page = await (await sam(`/visits/${vid}`)).text();
+  assert.ok(page.includes('Resolved by Sam (follow-up contact)'));
+  assert.ok(page.includes('second-hand resolution'));
+});

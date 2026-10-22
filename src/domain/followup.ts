@@ -1,8 +1,9 @@
 // Deadline evaluation. Pure: given a visit's state at `now`, decide whether a follow-up is due and
-// what it should say. Only an explicit caregiver confirmation or problem report resolves a visit.
+// what it should say. Only a person closes a visit: the visitor's or household owner's confirmation or problem
+// report, or the follow-up contact's resolution note.
 // Ring activity (or its absence) adjusts the wording, never the decision, and is never framed as an emergency.
 
-export type VisitStatus = 'scheduled' | 'confirmed' | 'problem' | 'unconfirmed' | 'cancelled';
+export type VisitStatus = 'scheduled' | 'confirmed' | 'problem' | 'unconfirmed' | 'resolved' | 'cancelled';
 
 export interface DeadlineInput {
   status: VisitStatus;

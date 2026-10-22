@@ -131,7 +131,7 @@ export async function renderDemo(repo: Repo, now = Date.now()) {
     </section>` : ''}
 
     <h2>A day at June's</h2>
-    ${visitCard(s.morning, s.mMatched, 'Door activity lined up with the visit, and Dana confirmed it. Only her confirmation closed the visit.')}
+    ${visitCard(s.morning, s.mMatched, 'Door activity lined up with the visit, and Dana confirmed it. A person closed the visit, not the Ring events.')}
     ${visitCard(s.afternoon, s.aMatched, 'Ring saw activity, but Dana never confirmed, so Sam got a follow-up. Motion classified as a vehicle stays off the visit.')}
     ${followupCard(s.fu, s.afternoon, { canAct: false, contactName: 'Sam', ackName: null, resolvedName: null, caregiverName: 'Dana', caregiverPhone: null, residentName: 'June', residentPhone: null, t: d })}
     <p class="small muted">In the real app Sam gets this in the app and by email (Amazon SES), with buttons to call or text Dana, say "I'm checking in", or resolve with a note.</p>
@@ -147,7 +147,7 @@ export async function renderDemo(repo: Repo, now = Date.now()) {
     <h2>The rules it follows</h2>
     <ul>
       <li>${DOOR_CAVEAT}</li>
-      <li>Only a person's confirmation closes a visit. Missing Ring activity is never treated as an emergency, and nothing is dispatched automatically.</li>
+      <li>Only a person closes a visit: the visitor, the person whose home it is, or the follow-up contact with a note, and each is labeled with their role. Missing Ring activity is never treated as an emergency, and nothing is dispatched automatically.</li>
       <li>No video, images, identity recognition, or unlocking. Unattached door activity is owner-only and deleted after 7 days.</li>
       <li class="small">${MATCH_RULE_TEXT}</li>
     </ul>
