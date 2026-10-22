@@ -148,6 +148,7 @@ export async function renderDemo(repo: Repo, now = Date.now()) {
     <ul>
       <li>${DOOR_CAVEAT}</li>
       <li>Only a person closes a visit: the visitor, the person whose home it is, or the follow-up contact with a note, and each is labeled with their role. Missing Ring activity is never treated as an emergency, and nothing is dispatched automatically.</li>
+      <li>The owner adds and removes trusted people; removing someone signs them out immediately and they're never emailed again.</li>
       <li>No video, images, identity recognition, or unlocking. Unattached door activity is owner-only and deleted after 7 days.</li>
       <li class="small">${MATCH_RULE_TEXT}</li>
     </ul>
