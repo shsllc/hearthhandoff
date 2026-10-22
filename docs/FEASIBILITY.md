@@ -1,5 +1,7 @@
 # Feasibility and Ring API access
 
+> **Status 2026-10-22: Tier 2 achieved.** A real Ring account is linked through a private app, and real signed webhooks and Event History polling are live. In a week: 103 real motion events, 92 by webhook with a median delay of about 1 s, and a real visit matched and followed up. The no-device "Tier 1" path below remains for anyone running the code without hardware. What we learned that the docs don't say is in [FRICTION_LOG.md](FRICTION_LOG.md) (entries 9–13).
+
 Checked 2026-10-05. **D** = documented by Amazon/Ring. **R** = reported by other hackathon entrants (not yet verified by us). **A** = our assumption, still to test.
 
 ## Hackathon constraints (D)
