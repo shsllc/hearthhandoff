@@ -97,6 +97,11 @@ export class Repo {
 
   putPerson(p: Omit<Person, 'pk' | 'sk'>) { return this.store.put({ ...keys.person(p.householdId, p.id), ...p }); }
   getPerson(hid: string, pid: string) { return this.store.get<Person>(`HH#${hid}`, `PERSON#${pid}`); }
+  /** Everyone in the household, including people whose access was revoked (for the People page). */
+  async allPeople(hid: string) {
+    return (await this.store.query<Person>(`HH#${hid}`, { prefix: 'PERSON#' }))
+      .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1));
+  }
   async people(hid: string) {
     return (await this.store.query<Person>(`HH#${hid}`, { prefix: 'PERSON#' })).filter((p) => p.active)
       .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'owner' ? -1 : 1));

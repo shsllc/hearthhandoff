@@ -25,7 +25,9 @@ export function buildApp(repo: Repo) {
     const raw = await getSignedCookie(c, config.appSecret, COOKIE);
     if (!raw) return null;
     const [hid, pid] = String(raw).split(':');
-    const p = hid && pid ? await repo.getPerson(hid, pid) : undefined;
+    // Only people with active access: removing someone takes effect on their next request.
+    const found = hid && pid ? await repo.getPerson(hid, pid) : undefined;
+    const p = found?.active ? found : undefined;
     return p ? { id: p.id, name: p.name, role: p.role, householdId: p.householdId } : null;
   }
 
@@ -164,7 +166,9 @@ export function buildApp(repo: Repo) {
       if (given.length !== want.length || !timingSafeEqual(given, want)) return c.redirect('/signin?flash=' + encodeURIComponent('That access code is not right.'));
     }
     const [hid, pid] = String(form.who ?? '').split(':');
-    const p = hid && pid ? await repo.getPerson(hid, pid) : undefined;
+    // Only people with active access: removing someone takes effect on their next request.
+    const found = hid && pid ? await repo.getPerson(hid, pid) : undefined;
+    const p = found?.active ? found : undefined;
     if (!p) return c.redirect('/signin');
     await setSignedCookie(c, COOKIE, `${hid}:${pid}`, config.appSecret, {
       httpOnly: true, sameSite: 'Lax', secure: config.publicBaseUrl.startsWith('https'), path: '/', maxAge: SESSION_DAYS * 86400,
@@ -214,7 +218,7 @@ export function buildApp(repo: Repo) {
     return c.html(page({ title: 'Household', viewer: who, flash: flash(c), since: await repo.latestAuditAt(who.householdId), body: html`
       <h1>${hh.name}</h1>
       <p class="muted">You decide who sees each visit. Trusted people only see door activity that falls inside visits they're part of.</p>
-      <div class="actions"><a class="btn" href="/owner/visits/new">Schedule a visit or delivery</a><a class="btn secondary" href="/owner/audit">Activity log</a></div>
+      <div class="actions"><a class="btn" href="/owner/visits/new">Schedule a visit or delivery</a><a class="btn secondary" href="/owner/people">People</a><a class="btn secondary" href="/owner/audit">Activity log</a></div>
 
       ${followups.length ? html`<h2>Needs attention</h2>${followups.map(({ visit, followup }) => followupCard(followup, visit, {
         canAct: true, contactName: nameOf(followup.contactPersonId), ackName: followup.acknowledgedBy ? nameOf(followup.acknowledgedBy) : null,
@@ -309,6 +313,69 @@ export function buildApp(repo: Repo) {
     return c.redirect('/owner?flash=' + encodeURIComponent('Deadline check and Ring history poll ran.'));
   });
 
+  // --- people: the owner decides who is in the circle ---
+  authed.get('/owner/people', ownerOnly, async (c) => {
+    const who = c.get('viewer');
+    const hh = (await repo.getHousehold(who.householdId))!;
+    const everyone = await repo.allPeople(who.householdId);
+    const visits = await repo.visits(who.householdId);
+    const upcoming = (pid: string) => visits.filter((v) => v.status === 'scheduled' && v.windowEnd > Date.now() && (v.assignedPersonId === pid || v.followupPersonId === pid || v.viewerIds.includes(pid))).length;
+    return c.html(page({ title: 'People', viewer: who, flash: flash(c), body: html`
+      <p><a href="/owner">← Back</a></p>
+      <h1>People in ${hh.residentName}'s circle</h1>
+      <p class="muted">Trusted people only see the visits you share with them, and only the door activity inside those visits. Removing someone's access signs them out right away; their past confirmations stay in the record.</p>
+      <section class="card"><table><thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Contact</th><th scope="col">Access</th></tr></thead><tbody>
+        ${everyone.map((p) => html`<tr>
+          <td><strong>${p.name}</strong>${p.id === who.id ? html` <span class="small muted">(you)</span>` : ''}</td>
+          <td class="small">${p.role === 'owner' ? 'Household owner' : 'Trusted person'}</td>
+          <td class="small">${p.email ?? ''}${p.email && p.phone ? html`<br>` : ''}${p.phone ?? ''}</td>
+          <td>${p.role === 'owner' ? html`<span class="pill ok">Owner</span>`
+            : p.active ? html`<span class="pill ok">Active</span>${upcoming(p.id) ? html`<div class="small muted">${upcoming(p.id)} upcoming visit${upcoming(p.id) === 1 ? '' : 's'}</div>` : ''}
+                <form method="post" action="/owner/people/${p.id}/revoke" style="margin-top:.4rem"><button class="secondary" type="submit" aria-label="Remove ${p.name}'s access">Remove access</button></form>`
+            : html`<span class="pill plain">Access removed</span>
+                <form method="post" action="/owner/people/${p.id}/restore" style="margin-top:.4rem"><button class="secondary" type="submit" aria-label="Restore ${p.name}'s access">Restore access</button></form>`}</td>
+        </tr>`)}
+      </tbody></table></section>
+      <section class="card" aria-labelledby="add-h"><h2 id="add-h" style="margin-top:0">Add a trusted person</h2>
+        <form method="post" action="/owner/people">
+          <label for="pn">Name</label><input id="pn" name="name" required maxlength="60" autocomplete="off">
+          <div class="row">
+            <div><label for="pe">Email (for follow-ups, optional)</label><input id="pe" name="email" type="email" maxlength="120" autocomplete="off"></div>
+            <div><label for="pp">Phone (for call and text buttons, optional)</label><input id="pp" name="phone" type="tel" maxlength="30" autocomplete="off"></div>
+          </div>
+          <div class="actions"><button type="submit">Add person</button></div>
+        </form>
+        <p class="small muted">Adding someone doesn't share anything yet. You choose who sees each visit when you schedule it.</p>
+      </section>` }));
+  });
+
+  authed.post('/owner/people', ownerOnly, async (c) => {
+    const who = c.get('viewer');
+    const form = await c.req.parseBody();
+    const name = String(form.name ?? '').trim().slice(0, 60);
+    const email = String(form.email ?? '').trim().slice(0, 120) || null;
+    const phone = String(form.phone ?? '').trim().replace(/[^\d+()\-\s]/g, '').slice(0, 30) || null;
+    if (!name) return c.redirect('/owner/people?flash=' + encodeURIComponent('Enter a name.'));
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return c.redirect('/owner/people?flash=' + encodeURIComponent('That email address doesn\'t look right.'));
+    const id = newId('p');
+    await repo.putPerson({ id, householdId: who.householdId, name, email, phone, role: 'caregiver', active: true });
+    await repo.audit(who.householdId, who.id, 'person.added', name);
+    return c.redirect('/owner/people?flash=' + encodeURIComponent(`Added ${name}. Share a visit with them when you schedule it.`));
+  });
+
+  const setAccess = (active: boolean) => async (c: Context<{ Variables: { viewer: Viewer } }>) => {
+    const who = c.get('viewer');
+    const p = (await repo.allPeople(who.householdId)).find((x) => x.id === c.req.param('pid'));
+    if (!p || p.role === 'owner' || p.id === who.id) return c.redirect('/owner/people?flash=' + encodeURIComponent('That person can\'t be changed here.'));
+    if (p.active !== active) {
+      await repo.putPerson({ ...p, active });
+      await repo.audit(who.householdId, who.id, active ? 'person.restored' : 'person.access_removed', p.name);
+    }
+    return c.redirect('/owner/people?flash=' + encodeURIComponent(active ? `${p.name} has access again.` : `${p.name} can no longer sign in or see any visits.`));
+  };
+  authed.post('/owner/people/:pid/revoke', ownerOnly, setAccess(false));
+  authed.post('/owner/people/:pid/restore', ownerOnly, setAccess(true));
+
   authed.get('/owner/audit', ownerOnly, async (c) => {
     const who = c.get('viewer');
     const hh = (await repo.getHousehold(who.householdId))!;
@@ -395,11 +462,11 @@ export function buildApp(repo: Repo) {
     if (cb < ws) return bad('Confirm-by cannot be before the window starts.');
     const assigned = ppl.get(String(form.assigned_person_id));
     const followup = ppl.get(String(form.followup_person_id));
-    if (!assigned || assigned.role !== 'caregiver' || !followup) return bad('Choose a visitor and a follow-up person from your household.');
+    if (!assigned || assigned.role !== 'caregiver' || !assigned.active || !followup || !followup.active) return bad('Choose a visitor and a follow-up person from your household.');
     const deviceId = String(form.device_id ?? '') || null;
     if (deviceId && !(await repo.getDevice(who.householdId, deviceId))) return bad('That Ring device is not connected.');
     const rawViewers = form.viewer_ids;
-    const viewerIds = (Array.isArray(rawViewers) ? rawViewers : rawViewers ? [rawViewers] : []).map(String).filter((id) => ppl.has(id));
+    const viewerIds = (Array.isArray(rawViewers) ? rawViewers : rawViewers ? [rawViewers] : []).map(String).filter((id) => ppl.get(id)?.active);
     const grace = (v: unknown) => Math.max(0, Math.min(240, Number(v) || 0));
     const visit: Omit<Visit, 'pk' | 'sk'> = {
       id: newId('visit'), householdId: who.householdId, kind: form.kind === 'delivery' ? 'delivery' : 'care_visit',

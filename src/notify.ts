@@ -13,6 +13,10 @@ export async function notifyFollowup(repo: Repo, hid: string, visitId: string, f
   const fu = visit?.followups.find((f) => f.id === followupId);
   if (!visit || !hh || !fu) return;
   const contact = await repo.getPerson(hid, fu.contactPersonId);
+  if (contact && !contact.active) {
+    await repo.audit(hid, 'system', 'followup.email_skipped', `${contact.name} no longer has access; not emailed`);
+    return;
+  }
   if (!contact?.email) {
     await repo.audit(hid, 'system', 'followup.email_skipped', `${contact?.name ?? 'contact'} has no email on file`);
     return;

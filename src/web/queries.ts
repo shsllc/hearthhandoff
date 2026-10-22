@@ -23,7 +23,8 @@ export async function visibleVisit(repo: Repo, who: Viewer, id: string) {
 }
 
 export async function peopleById(repo: Repo, hid: string) {
-  return new Map<string, Person>((await repo.people(hid)).map((p) => [p.id, p]));
+  // Includes people whose access was removed, so their names still appear on past visits.
+  return new Map<string, Person>((await repo.allPeople(hid)).map((p) => [p.id, p]));
 }
 
 export async function matchedEvents(repo: Repo, v: Visit): Promise<Array<{ event: DoorEvent; match: Match }>> {

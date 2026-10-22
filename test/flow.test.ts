@@ -227,3 +227,29 @@ test('the follow-up contact resolving with a note closes an unconfirmed visit as
   assert.ok(page.includes('Resolved by Sam (follow-up contact)'));
   assert.ok(page.includes('second-hand resolution'));
 });
+
+test('owner manages the circle: add a trusted person, remove access (signs them out), restore', async () => {
+  const june = await signIn('p_june');
+  const dana = await signIn('p_dana');
+  const before = (await repo.allPeople(HID)).length;
+  await june('/owner/people', { name: 'Rosa', email: 'rosa@example.test', phone: '+1 555 0199' });
+  const rosa = (await repo.allPeople(HID)).find((p) => p.name === 'Rosa')!;
+  assert.equal((await repo.allPeople(HID)).length, before + 1);
+  assert.equal(rosa.role, 'caregiver');
+  assert.ok((await (await signIn(rosa.id))('/me')).status === 200, 'new person can sign in');
+
+  assert.equal((await dana('/owner/people')).status, 403, 'caregivers cannot manage people');
+
+  await june(`/owner/people/p_dana/revoke`, {});
+  const blocked = await dana('/me');
+  assert.equal(blocked.status, 302, 'removed person is signed out immediately');
+  assert.ok(blocked.headers.get('location')!.startsWith('/signin'));
+  const vid = await makeVisit();
+  const page = await (await june(`/visits/${vid}`)).text();
+  assert.ok(page.includes('Dana'), 'past visits still show the name');
+
+  await june(`/owner/people/p_june/revoke`, {});
+  assert.equal((await repo.getPerson(HID, 'p_june'))!.active, true, 'owner cannot remove themselves');
+  await june(`/owner/people/p_dana/restore`, {});
+  assert.equal((await (await signIn('p_dana'))('/me')).status, 200, 'restored person can sign in again');
+});
